@@ -402,8 +402,8 @@ static long scanLaterList(robj *ob, unsigned long *cursor, monotime endtime) {
                 ob->ptr = ql; /* bookmark creation may have re-allocated the quicklist */
                 (*cursor)++;
             }
-            /* Bookmark creation failed - keep previous bookmark */
-            return 1; /* time expired, more work needed */
+            /* Bookmark creation failed - skip this one and continue with other quicklists */
+            return 0; 
         }
         
         node = node->next;
