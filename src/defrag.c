@@ -377,41 +377,42 @@ static void defragLater(robj *obj) {
 static long scanLaterList(robj *ob, unsigned long *cursor, monotime endtime) {
     quicklist *ql = ob->ptr;
     quicklistNode *node;
-    int bookmark_failed = 0;
     serverAssert(ob->type == OBJ_LIST && ob->encoding == OBJ_ENCODING_QUICKLIST);
 
+    /* Find starting node */
     if (*cursor == 0) {
-        /* if cursor is 0, we start new iteration */
         node = ql->head;
     } else {
         node = quicklistBookmarkFind(ql, "_AD");
         if (!node) {
-            /* if the bookmark was deleted, it means we reached the end. */
             *cursor = 0;
-            return 0;
+            return 0; /* bookmark deleted, we're done */
         }
         node = node->next;
     }
 
-    (*cursor)++;
+    /* Process nodes until time expires or list ends */
     while (node) {
         activeDefragQuickListNode(ql, &node);
         server.stat_active_defrag_scanned++;
         
-        if (getMonotonicUs() > endtime && !bookmark_failed) {
-            if (!quicklistBookmarkCreate(&ql, "_AD", node)) {
-                bookmark_failed = 1;
-            } else {
+        /* Check time limit after processing each node */
+        if (getMonotonicUs() > endtime) {
+            if (quicklistBookmarkCreate(&ql, "_AD", node)) {
                 ob->ptr = ql; /* bookmark creation may have re-allocated the quicklist */
-                return 1;
+                (*cursor)++;
             }
+            /* Bookmark creation failed - keep previous bookmark */
+            return 1; /* time expired, more work needed */
         }
         
         node = node->next;
     }
+    
+    /* Completed processing all nodes */
     quicklistBookmarkDelete(ql, "_AD");
     *cursor = 0;
-    return bookmark_failed ? 1 : 0;
+    return 0;
 }
 
 static void scanLaterZsetCallback(void *privdata, void *element_ref) {
