@@ -395,7 +395,7 @@ static long scanLaterList(robj *ob, unsigned long *cursor, monotime endtime) {
     while (node) {
         activeDefragQuickListNode(ql, &node);
         server.stat_active_defrag_scanned++;
-        
+
         /* Check time limit after processing each node */
         if (getMonotonicUs() > endtime) {
             if (quicklistBookmarkCreate(&ql, "_AD", node)) {
@@ -403,12 +403,12 @@ static long scanLaterList(robj *ob, unsigned long *cursor, monotime endtime) {
                 (*cursor)++;
             }
             /* Bookmark creation failed - skip this one and continue with other quicklists */
-            return 0; 
+            return 0;
         }
-        
+
         node = node->next;
     }
-    
+
     /* Completed processing all nodes */
     quicklistBookmarkDelete(ql, "_AD");
     *cursor = 0;
