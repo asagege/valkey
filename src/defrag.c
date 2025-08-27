@@ -847,7 +847,7 @@ static doneStatus defragLaterStep(monotime endtime, void *privdata) {
             listDelNode(defrag_later, head);
         }
 
-        if (++iterations > 16 || server.stat_active_defrag_hits - prev_defragged > 0 ||
+        if (++iterations > 16 || server.stat_active_defrag_hits > prev_defragged ||
             server.stat_active_defrag_scanned - prev_scanned > 64) {
             if (getMonotonicUs() > endtime) break;
             iterations = 0;
@@ -895,7 +895,7 @@ static doneStatus defragStageKvstoreHelper(monotime endtime,
     }
 
     while (true) {
-        if (++iterations > 16 || server.stat_active_defrag_hits - prev_defragged > 512 || server.stat_active_defrag_scanned - prev_scanned > 64) {
+        if (++iterations > 16 || server.stat_active_defrag_hits > prev_defragged || server.stat_active_defrag_scanned - prev_scanned > 64) {
             if (getMonotonicUs() >= endtime) break;
             iterations = 0;
             prev_defragged = server.stat_active_defrag_hits;
