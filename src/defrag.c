@@ -822,7 +822,7 @@ static doneStatus defragLaterStep(monotime endtime, void *privdata) {
     defragKeysCtx *ctx = privdata;
 
     unsigned int iterations = 0;
-    unsigned long long prev_defragged = server.stat_active_defrag_hits;
+    long long prev_defragged = server.stat_active_defrag_hits;
     unsigned long long prev_scanned = server.stat_active_defrag_scanned;
 
     while (defrag_later && listLength(defrag_later) > 0) {
@@ -882,7 +882,7 @@ static doneStatus defragStageKvstoreHelper(monotime endtime,
     }
 
     unsigned int iterations = 0;
-    unsigned long long prev_defragged = server.stat_active_defrag_hits;
+    long long prev_defragged = server.stat_active_defrag_hits;
     unsigned long long prev_scanned = server.stat_active_defrag_scanned;
 
     if (state.slot == KVS_SLOT_DEFRAG_LUT) {
