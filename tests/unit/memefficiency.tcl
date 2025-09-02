@@ -1,3 +1,4 @@
+# test for sign-off
 proc test_memory_efficiency {range} {
     r flushall
     set rd [valkey_deferring_client]
