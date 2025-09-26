@@ -357,16 +357,16 @@ static inline int makeDefragDecision(jeBinInfo *bin_info, jemallocBinUsageData *
     unsigned long curr_full_slabs = bin_usage->curr_slabs - bin_usage->curr_nonfull_slabs;
     size_t allocated_nonfull = bin_usage->curr_regs - curr_full_slabs * bin_info->nregs;
 
-    /* Don't defrag if the slab is full or if there's only 1 nonfull slab */ 
+    /* Don't defrag if the slab is full or if there's only 1 nonfull slab */
     if (bin_info->nregs == nalloced || bin_usage->curr_nonfull_slabs < 2) return 0;
 
-    /* Always defrag if the slab is less than 1/8 full */ 
+    /* Always defrag if the slab is less than 1/8 full */
     if (nalloced * 8 < bin_info->nregs) return 1;
 
-    /* Don't defrag if the slab usage is greater than the average usage (+ 12.5%) */ 
+    /* Don't defrag if the slab usage is greater than the average usage (+ 12.5%) */
     if (1000 * nalloced * bin_usage->curr_nonfull_slabs > (1000 + UTILIZATION_THRESHOLD_FACTOR_MILLI) * allocated_nonfull) return 0;
 
-    /* Otherwise, defrag! */ 
+    /* Otherwise, defrag! */
     return 1;
 }
 
