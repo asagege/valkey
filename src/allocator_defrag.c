@@ -360,7 +360,7 @@ static inline int makeDefragDecision(jeBinInfo *bin_info, jemallocBinUsageData *
     /* Don't defrag if the slab is full or if there's only 1 nonfull slab */
     if (bin_info->nregs == nalloced || bin_usage->curr_nonfull_slabs < 2) return 0;
 
-    /* Always defrag if the slab is less than 1/8 full */
+    /* Defrag if the slab is less than 1/8 full */
     if (nalloced * 8 < bin_info->nregs) return 1;
 
     /* Don't defrag if the slab usage is greater than the average usage (+ 12.5%) */
