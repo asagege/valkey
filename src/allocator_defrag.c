@@ -349,8 +349,9 @@ unsigned long allocatorDefragGetFragSmallbins(void) {
  *    defragmentation is not necessary as moving regions is guaranteed not to change the fragmentation ratio.
  * 2. If the number of non-full slabs (bin_usage->curr_nonfull_slabs) is less than 2, defragmentation is not performed
  *    because there is no other slab to move regions to.
- * 3. Defrag if the slab is less than 1/8 full to ensure no low-utilization slabs left without defragged, and stabilize the defrag behavior.
- *    1/8 threshold (12.5%) chosen to align with existing utilization threshold factor.
+ * 3. Defrag if the slab is less than 1/8 full to ensure small slabs get defragmented even when average utilization is low.
+ *    This also handles the case when there are items that aren't defragmented skewing the average utilization. The 1/8
+ *    threshold (12.5%) was chosen to align with existing utilization threshold factor.
  * 4. If slab utilization < 'avg utilization'*1.125 [code 1.125 == (1000+UTILIZATION_THRESHOLD_FACTOR_MILLI)/1000]
  *    than we should defrag. This is aligned with previous je_defrag_hint implementation.
  */
