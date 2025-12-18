@@ -40,7 +40,7 @@ void fifoPush(fifo *q, void *ptr);
 bool fifoPeek(fifo *q, void **item);
 
 /* Return and remove the first item from the fifo.
- * Returns true if an item exists. If false, `item` is undefined. */
+ * Returns true if an item exists. If false, `item` is not updated. */
 bool fifoPop(fifo *q, void **item);
 
 /* Return the number of items in the fifo. */
