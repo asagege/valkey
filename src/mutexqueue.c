@@ -20,7 +20,6 @@ struct mutexQueue {
 };
 
 
-/* Create an empty queue.  */
 mutexQueue *mutexQueueCreate(void) {
     mutexQueue *mq;
     mq = zmalloc(sizeof(*mq));
@@ -33,11 +32,10 @@ mutexQueue *mutexQueueCreate(void) {
 }
 
 
-/* Release an empty queue.
- * Note:  The queue must be empty before calling release.  The quickest way to empty the queue is to
+/* Note:  The mutexQueue must be empty before calling release.  The quickest way to empty the mutexQueue is to
  *        call mutexQueuePopAll - which returns the items in a new fifo.  It is the caller's
  *        responsibility to free memory (as necessary) for any items.
- * Note:  Behavior is undefined if other threads are accessing the queue.  */
+ * Note:  Behavior is undefined if other threads are accessing the mutexQueue.  */
 void mutexQueueRelease(mutexQueue *theQueue) {
     assert(mutexQueueLength(theQueue) == 0);
     mutexQueue *mq = theQueue;
@@ -59,7 +57,6 @@ static inline unsigned long mutexQueueLengthInternal(mutexQueue *mq) {
 }
 
 
-/* Number of items in the queue.  */
 unsigned long mutexQueueLength(mutexQueue *theQueue) {
     mutexQueue *mq = theQueue;
 
@@ -72,8 +69,7 @@ unsigned long mutexQueueLength(mutexQueue *theQueue) {
 }
 
 
-/* Insert a priority item at the beginning of the queue (but after existing priority items).  */
-void mutexQueueAddPriority(mutexQueue *theQueue, void *value) {
+void mutexQueuePushPriority(mutexQueue *theQueue, void *value) {
     mutexQueue *mq = theQueue;
 
     pthread_mutex_lock(&mq->mutex);
@@ -86,7 +82,6 @@ void mutexQueueAddPriority(mutexQueue *theQueue, void *value) {
 }
 
 
-/* Insert an item at the end of the queue.  */
 void mutexQueueAdd(mutexQueue *theQueue, void *value) {
     mutexQueue *mq = theQueue;
 
@@ -100,7 +95,7 @@ void mutexQueueAdd(mutexQueue *theQueue, void *value) {
 }
 
 
-/* Insert a fifo of items at the end of the queue.  This removes the items from the source fifo!  */
+/* Note: This removes the items from the source fifo!  */
 void mutexQueueAddMultiple(mutexQueue *theQueue, fifo *valueFifo) {
     mutexQueue *mq = theQueue;
 
@@ -116,8 +111,7 @@ void mutexQueueAddMultiple(mutexQueue *theQueue, fifo *valueFifo) {
 }
 
 
-/* Retrieves the first item off the queue (or NULL if queue is empty).
- * If 'blocking' is true, this method will block until an item is available.  */
+/* Note: If 'blocking' is true, this method will block until an item is available.  */
 void *mutexQueuePop(mutexQueue *theQueue, bool blocking) {
     mutexQueue *mq = theQueue;
     void *value = NULL;
@@ -131,9 +125,9 @@ void *mutexQueuePop(mutexQueue *theQueue, bool blocking) {
     }
 
     if (fifoLength(mq->priority_fifo) > 0) {
-        value = fifoPop(mq->priority_fifo);
+        fifoPop(mq->priority_fifo, &value);
     } else if (fifoLength(mq->normal_fifo) > 0) {
-        value = fifoPop(mq->normal_fifo);
+        fifoPop(mq->normal_fifo, &value);
     }
 
     pthread_mutex_unlock(&mq->mutex);
@@ -141,8 +135,7 @@ void *mutexQueuePop(mutexQueue *theQueue, bool blocking) {
 }
 
 
-/* Retrieves all items from the queue as a fifo (or NULL if the queue is empty).
- * If 'blocking' is true, this method will block until an item is available.  */
+/* Note: If 'blocking' is true, this method will block until an item is available.  */
 fifo *mutexQueuePopAll(mutexQueue *theQueue, bool blocking) {
     mutexQueue *mq = theQueue;
     fifo *result = NULL;

@@ -4,9 +4,11 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-/* FIFO - A high-performance FIFO queue implementation */
+/* FIFO - A high-performance First-In, First-Out queue implementation */
 
+#include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "fifo.h"
 #include "serverassert.h"
@@ -21,7 +23,7 @@ static const uintptr_t IDX_MASK = 0x0007;
 
 /* The FifoBlock contains up to 7 items (pointers).  When compared with adlist, this results in
  * roughly 60% memory reduction and 7x fewer memory allocations.  Memory reduction is guaranteed
- * with 5+ items in queue.
+ * with 5+ items.
  *
  * In each block, there are 7 slots for item pointers (pointers to the caller's FIFO item).
  *  We need to keep track of the first & last slot used.  Contextually, we will only need
@@ -113,13 +115,12 @@ struct fifoBlock {
 };
 
 struct fifo {
-    long length; /* Total number of items in queue */
+    long length; /* Number of items */
     fifoBlock *first;
     fifoBlock *last;
 };
 
 
-/* Create a new FIFO queue. */
 fifo *fifoCreate(void) {
     fifo *q = zmalloc(sizeof(fifo));
     q->length = 0;
@@ -128,10 +129,9 @@ fifo *fifoCreate(void) {
 }
 
 
-/* Push an item onto the end of the queue. */
 void fifoPush(fifo *q, void *ptr) {
     if (q->first == NULL) {
-        /* Queue was empty - create block */
+        /* fifo was empty - create block */
         assert(q->last == NULL && q->length == 0);
         q->last = q->first = zmalloc(sizeof(fifoBlock));
         q->last->u.last_or_first_idx = 0; /* Item 0 is the last item in this block */
@@ -158,32 +158,49 @@ void fifoPush(fifo *q, void *ptr) {
 }
 
 
-/* Look at the first item in the queue (without removing it).
- * NOTE: asserts if the queue is empty. */
-void *fifoPeek(fifo *q) {
-    assert(q->length > 0);
+bool fifoPeek(fifo *q, void **item) {
+    if (q->length == 0) return false;
     int firstIdx = (q->first == q->last) ? 0 : q->first->u.last_or_first_idx & IDX_MASK;
-    return q->first->items[firstIdx];
+    *item = q->first->items[firstIdx];
+    return true;
 }
 
 
-/* Return and remove the first item from the queue.
- * NOTE: asserts if the queue is empty. */
-void *fifoPop(fifo *q) {
-    assert(q->length > 0);
-    void *item;
+bool fifoPop(fifo *q, void **item) {
+    if (q->length == 0) return false;
+    void *value;
 
     if (q->first == q->last) {
-        /* With only 1 block, POP occurs at index 0 and items 1..6 are shifted. */
-        item = q->last->items[0];
+        /* With only 1 block, POP occurs at index 0 and items 1..6 are shifted.
+         *
+         * Example SINGLE BLOCK with 4 items BEFORE pop:
+         *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+         *  BEFORE POP:    | slot 0 | slot 1 | slot 2 | slot 3 | slot 4 | slot 5 | slot 6 | next/  |
+         *                 |  item  |  item  |  item  |  item  |   -    |   -    |   -    | lastIdx|
+         *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+         *                    ^                                   ^
+         *                  POP here                           lastIdx (3)
+         *
+         * Example SINGLE BLOCK with 3 items AFTER pop (items shifted left):
+         *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+         *  AFTER POP:     | slot 0 | slot 1 | slot 2 | slot 3 | slot 4 | slot 5 | slot 6 | next/  |
+         *                 |  item  |  item  |  item  |   -    |   -    |   -    |   -    | lastIdx|
+         *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+         *                                        ^
+         *                                     lastIdx (2)
+         *
+         * Items are shifted left to keep them left-justified in the single block.
+         * This avoids needing to allocate a new block when pushing more items.
+         */
+        value = q->last->items[0];
 
         int lastIdx = q->last->u.last_or_first_idx; /* pointer portion is 0 on last (or only) block */
         assert(lastIdx < ITEMS_PER_BLOCK);
 
         if (lastIdx > 0) {
             /* With only 1 block, shift the items rather than eventually needing new block.
-             * (This is cheap, shifting a max of 6 pointers.) */
-            for (int i = 0; i < lastIdx; i++) q->last->items[i] = q->last->items[i + 1];
+             * Use memmove to shift pointers to the left by 1 */
+            memmove(q->last->items, q->last->items + 1, lastIdx * sizeof(q->last->items[0]));
             q->last->u.last_or_first_idx--; /* Decrement the last index */
         } else {
             /* Just finished the only block.  Delete it. */
@@ -193,7 +210,7 @@ void *fifoPop(fifo *q) {
     } else {
         /* With more than 1 block, POP occurs at firstIdx, and firstIdx is incremented. */
         int firstIdx = q->first->u.last_or_first_idx & IDX_MASK;
-        item = q->first->items[firstIdx];
+        value = q->first->items[firstIdx];
 
         if (firstIdx < ITEMS_PER_BLOCK - 1) {
             /* Just increment the first index to the next slot. */
@@ -208,19 +225,16 @@ void *fifoPop(fifo *q) {
     }
 
     q->length--;
-
-    return item;
+    *item = value;
+    return true;
 }
 
 
-/* Return the number of items in the queue. */
 long fifoLength(fifo *q) {
     return q->length;
 }
 
 
-/* Delete the queue.
- * NOTE: this does not free items which may be referenced by inserted pointers. */
 void fifoDelete(fifo *q) {
     if (q->length > 0) {
         fifoBlock *cur = q->first;
@@ -235,8 +249,8 @@ void fifoDelete(fifo *q) {
 }
 
 
-/* Blindly overwrites target from source. */
-static void blindlyMoveFifoContents(fifo *target, fifo *source) {
+/* Overwrites target from source. */
+static void overwriteFifoContents(fifo *target, fifo *source) {
     target->length = source->length;
     target->first = source->first;
     target->last = source->last;
@@ -245,7 +259,6 @@ static void blindlyMoveFifoContents(fifo *target, fifo *source) {
 }
 
 
-/* Join an "other" fifo onto this one (emptying "other") */
 void fifoJoin(fifo *q, fifo *other) {
     /* When joining a fifo onto an existing fifo, we might be left with partially full blocks in the
      * middle of the list.  In the usual case, any blocks in the middle of the list have the index
@@ -257,32 +270,70 @@ void fifoJoin(fifo *q, fifo *other) {
      * shift the items so that the block becomes right-justified.  Then the index is corrected,
      * replacing the lastIdx with the firstIdx.
      *
-     * The "other" list is correct as-is.  If there is only a single block, it becomes the last
-     * block and remains left-justified.  If there are multiple blocks, the first block of the
-     * "other" list is already right-justified and becomes a partially full middle block.
+     * Example: Joining two fifos where "q" has 3 items in its last block:
+     *
+     * BEFORE JOIN - "q" fifo (last block is left-justified):
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+     *  q->last:       | slot 0 | slot 1 | slot 2 | slot 3 | slot 4 | slot 5 | slot 6 | next/  |
+     *                 |  item  |  item  |  item  |   -    |   -    |   -    |   -    | lastIdx|
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+     *                                        ^                                           (2)
+     *
+     * BEFORE JOIN - "other" fifo (first block is right-justified if multiple blocks):
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+     *  other->first:  | slot 0 | slot 1 | slot 2 | slot 3 | slot 4 | slot 5 | slot 6 | next/  |
+     *                 |   -    |   -    |   -    |   -    |  item  |  item  |  item  |firstIdx|
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+     *                                                         ^                          (4)
+     *
+     * AFTER JOIN - q's last block is shifted right and linked to other:
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+     *  (was q->last)  | slot 0 | slot 1 | slot 2 | slot 3 | slot 4 | slot 5 | slot 6 | next/  |
+     *  now middle:    |   -    |   -    |   -    |   -    |  item  |  item  |  item  |firstIdx| --+
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+   |
+     *                                                         ^                          (4)      |
+     *                                                                                             |
+     *                    +------------------------------------------------------------------------+
+     *                    |
+     *                    v
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+     *  other->first:  | slot 0 | slot 1 | slot 2 | slot 3 | slot 4 | slot 5 | slot 6 | next/  |
+     *  (now linked):  |   -    |   -    |   -    |   -    |  item  |  item  |  item  |firstIdx|
+     *                 +--------+--------+--------+--------+--------+--------+--------+--------+
+     *                                                         ^                          (4)
+     *                                                         |
+     *                                                     firstIdx
+     *
+     * The shift ensures q's last block becomes a valid middle block (right-justified with firstIdx).
+     *
+     * The "other" list maintains its structure when appended:
+     * - If "other" has a single block (left-justified), it becomes q's new last block
+     * - If "other" has multiple blocks, its first block (right-justified if partial) becomes
+     *   a middle block, and its last block becomes q's new last block
+     * This is essentially a "pop all from other into q" operation that preserves invariants.
      */
     if (other->length == 0) return;
 
     if (q->length == 0) {
         /* If "q" is empty, it's a simple operation. */
-        blindlyMoveFifoContents(q, other);
+        overwriteFifoContents(q, other);
         return;
     }
 
     if (other->length < ITEMS_PER_BLOCK) {
         /* In the case of a short "other" fifo, move each item.  This prevents creation of a string
          * of half-empty blocks if fifoJoin is repeatedly used on small fifos. */
-        while (other->length > 0) fifoPush(q, fifoPop(other));
+        void *value;
+        while (fifoPop(other, &value)) fifoPush(q, value);
         return;
     }
 
     fifoBlock *curLast = q->last;
     int lastIdx = curLast->u.last_or_first_idx;
-    /* Shift the items in the last block if it is partially full */
+    /* Shift the items to the right in the last block if it is partially full */
     int shift = (ITEMS_PER_BLOCK - 1) - lastIdx;
     if (shift > 0) {
-        for (int i = lastIdx; i >= 0; i--)
-            curLast->items[i + shift] = curLast->items[i];
+        memmove(q->last->items + shift, q->last->items, (lastIdx + 1) * sizeof(q->last->items[0]));
     }
 
     /* Now fix up the next pointer to point to the next block */
@@ -297,9 +348,8 @@ void fifoJoin(fifo *q, fifo *other) {
 }
 
 
-/* Copy all of the items into a new fifo (emptying the original) */
 fifo *fifoPopAll(fifo *q) {
     fifo *newQ = zmalloc(sizeof(fifo));
-    blindlyMoveFifoContents(newQ, q);
+    overwriteFifoContents(newQ, q);
     return newQ;
 }

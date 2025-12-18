@@ -18,7 +18,7 @@ static void add(mutexQueue *q, long value) {
 
 static void pAdd(mutexQueue *q, long value) {
     unsigned long len = mutexQueueLength(q);
-    mutexQueueAddPriority(q, (void *)value);
+    mutexQueuePushPriority(q, (void *)value);
     TEST_EXPECT(mutexQueueLength(q) == len + 1);
 }
 
@@ -100,10 +100,11 @@ int test_mutexQueueFifoPopAll(int argc, char *argv[], int flags) {
     TEST_EXPECT(mutexQueuePopAll(q, false) == NULL);
     TEST_EXPECT(mutexQueueLength(q) == 0ul);
 
-    TEST_EXPECT((unsigned long)fifoPop(f) == 1ul);
-    TEST_EXPECT((unsigned long)fifoPop(f) == 2ul);
-    TEST_EXPECT((unsigned long)fifoPop(f) == 10ul);
-    TEST_EXPECT((unsigned long)fifoPop(f) == 11ul);
+    void *ptr;
+    TEST_EXPECT(fifoPop(f, &ptr) && (unsigned long)ptr == 1ul);
+    TEST_EXPECT(fifoPop(f, &ptr) && (unsigned long)ptr == 2ul);
+    TEST_EXPECT(fifoPop(f, &ptr) && (unsigned long)ptr == 10ul);
+    TEST_EXPECT(fifoPop(f, &ptr) && (unsigned long)ptr == 11ul);
     TEST_EXPECT(fifoLength(f) == 0);
 
     fifoDelete(f);
