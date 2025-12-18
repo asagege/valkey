@@ -168,7 +168,6 @@ bool fifoPeek(fifo *q, void **item) {
 
 bool fifoPop(fifo *q, void **item) {
     if (q->length == 0) return false;
-    void *value;
 
     if (q->first == q->last) {
         /* With only 1 block, POP occurs at index 0 and items 1..6 are shifted.
@@ -192,7 +191,7 @@ bool fifoPop(fifo *q, void **item) {
          * Items are shifted left to keep them left-justified in the single block.
          * This avoids needing to allocate a new block when pushing more items.
          */
-        value = q->last->items[0];
+        *item = q->last->items[0];
 
         int lastIdx = q->last->u.last_or_first_idx; /* pointer portion is 0 on last (or only) block */
         assert(lastIdx < ITEMS_PER_BLOCK);
@@ -210,7 +209,7 @@ bool fifoPop(fifo *q, void **item) {
     } else {
         /* With more than 1 block, POP occurs at firstIdx, and firstIdx is incremented. */
         int firstIdx = q->first->u.last_or_first_idx & IDX_MASK;
-        value = q->first->items[firstIdx];
+        *item = q->first->items[firstIdx];
 
         if (firstIdx < ITEMS_PER_BLOCK - 1) {
             /* Just increment the first index to the next slot. */
@@ -225,7 +224,6 @@ bool fifoPop(fifo *q, void **item) {
     }
 
     q->length--;
-    *item = value;
     return true;
 }
 
