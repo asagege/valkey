@@ -46,9 +46,9 @@ bool fifoPop(fifo *q, void **item);
 /* Return the number of items in the fifo. */
 long fifoLength(fifo *q);
 
-/* Delete the fifo.
+/* Release the fifo.
  * NOTE: this does not free items which may be referenced by inserted pointers. */
-void fifoDelete(fifo *q);
+void fifoRelease(fifo *q);
 
 /* Joins the fifo "other" to the end of "q".  "other" becomes empty, but remains valid.
  * This is an O(1) operation.
@@ -68,7 +68,7 @@ void fifoJoin(fifo *q, fifo *other);
  * is to extract items rather than merge fifos.
  * Example: fifo *batch = fifoPopAll(source_q);
  *          // batch contains all items, source_q is now empty
- *          // Process batch, then fifoDelete(batch) when done */
+ *          // Process batch, then fifoRelease(batch) when done */
 fifo *fifoPopAll(fifo *q);
 
 #endif

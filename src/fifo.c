@@ -202,7 +202,7 @@ bool fifoPop(fifo *q, void **item) {
             memmove(q->last->items, q->last->items + 1, lastIdx * sizeof(q->last->items[0]));
             q->last->u.last_or_first_idx--; /* Decrement the last index */
         } else {
-            /* Just finished the only block.  Delete it. */
+            /* Just finished the only block.  Release it. */
             zfree(q->last);
             q->first = q->last = NULL;
         }
@@ -233,7 +233,7 @@ long fifoLength(fifo *q) {
 }
 
 
-void fifoDelete(fifo *q) {
+void fifoRelease(fifo *q) {
     if (q->length > 0) {
         fifoBlock *cur = q->first;
         while (cur != NULL) {

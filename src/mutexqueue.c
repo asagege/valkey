@@ -44,8 +44,8 @@ void mutexQueueRelease(mutexQueue *theQueue) {
     pthread_cond_broadcast(&mq->notify_cv);
     pthread_cond_destroy(&mq->notify_cv);
 
-    fifoDelete(mq->priority_fifo);
-    fifoDelete(mq->normal_fifo);
+    fifoRelease(mq->priority_fifo);
+    fifoRelease(mq->normal_fifo);
 
     zfree(mq);
 }

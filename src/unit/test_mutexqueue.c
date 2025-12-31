@@ -16,7 +16,7 @@ static void add(mutexQueue *q, long value) {
     TEST_EXPECT(mutexQueueLength(q) == len + 1);
 }
 
-static void pAdd(mutexQueue *q, long value) {
+static void priorityAdd(mutexQueue *q, long value) {
     unsigned long len = mutexQueueLength(q);
     mutexQueuePushPriority(q, (void *)value);
     TEST_EXPECT(mutexQueueLength(q) == len + 1);
@@ -69,9 +69,9 @@ int test_mutexQueuePriorityOrdering(int argc, char *argv[], int flags) {
 
     mutexQueue *q = mutexQueueCreate();
     add(q, 10);
-    pAdd(q, 1);
+    priorityAdd(q, 1);
     add(q, 11);
-    pAdd(q, 2);
+    priorityAdd(q, 2);
     popTest(q, 1);
     popTest(q, 2);
     popTest(q, 10);
@@ -90,9 +90,9 @@ int test_mutexQueueFifoPopAll(int argc, char *argv[], int flags) {
 
     mutexQueue *q = mutexQueueCreate();
     add(q, 10);
-    pAdd(q, 1);
+    priorityAdd(q, 1);
     add(q, 11);
-    pAdd(q, 2);
+    priorityAdd(q, 2);
 
     fifo *f = mutexQueuePopAll(q, false);
     TEST_ASSERT(f != NULL); /* Fatal - can't continue if NULL */
@@ -107,7 +107,7 @@ int test_mutexQueueFifoPopAll(int argc, char *argv[], int flags) {
     TEST_EXPECT(fifoPop(f, &ptr) && (unsigned long)ptr == 11ul);
     TEST_EXPECT(fifoLength(f) == 0);
 
-    fifoDelete(f);
+    fifoRelease(f);
     mutexQueueRelease(q);
     return 0;
 }
@@ -126,10 +126,10 @@ int test_mutexQueueFifoAddMultiple(int argc, char *argv[], int flags) {
     fifoPush(f, (void *)3);
     mutexQueueAddMultiple(q, f);
     TEST_EXPECT(fifoLength(f) == 0u);
-    fifoDelete(f);
+    fifoRelease(f);
 
     add(q, 4);
-    pAdd(q, 0);
+    priorityAdd(q, 0);
     popTest(q, 0);
     popTest(q, 1);
     popTest(q, 2);
@@ -220,7 +220,7 @@ int test_mutexQueueParallelWriters(int argc, char *argv[], int flags) {
     TEST_EXPECT(mutexQueueLength(q) == (unsigned long)(num_threads * 1000));
 
     fifo *f = mutexQueuePopAll(q, false);
-    fifoDelete(f);
+    fifoRelease(f);
     mutexQueueRelease(q);
     return 0;
 }

@@ -307,7 +307,7 @@ unsigned long bioPendingJobsOfType(int type) {
 /* Wait for the job queue of the worker for jobs of specified type to become empty. */
 void bioDrainWorker(int type) {
     while (bioPendingJobsOfType(type) > 0) {
-        usleep(100); /* Sleep for 1ms and check again*/
+        usleep(100);
     }
 }
 

@@ -6,33 +6,34 @@
 
 #include "../fifo.h"
 #include "test_help.h"
+#include <strings.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-static inline void *INT_TO_PTR(intptr_t i) {
+static inline void *intToPointer(intptr_t i) {
     return (void *)i;
 }
 
-static inline intptr_t PTR_TO_INT(void *p) {
+static inline intptr_t pointerToInt(void *p) {
     return (intptr_t)p;
 }
 
 /* Helper functions */
 static void push(fifo *q, intptr_t value) {
     int len = fifoLength(q);
-    fifoPush(q, INT_TO_PTR(value));
+    fifoPush(q, intToPointer(value));
     TEST_EXPECT(fifoLength(q) == len + 1);
 }
 
 static intptr_t popTest(fifo *q, intptr_t expected) {
     void *peekPtr;
     TEST_EXPECT(fifoPeek(q, &peekPtr));
-    intptr_t peekValue = PTR_TO_INT(peekPtr);
+    intptr_t peekValue = pointerToInt(peekPtr);
     TEST_EXPECT(peekValue == expected);
     int len = fifoLength(q);
     void *popPtr;
     TEST_EXPECT(fifoPop(q, &popPtr));
-    intptr_t value = PTR_TO_INT(popPtr);
+    intptr_t value = pointerToInt(popPtr);
     TEST_EXPECT(fifoLength(q) == len - 1);
     TEST_EXPECT(value == expected);
     return value;
@@ -48,7 +49,7 @@ int test_fifoEmptyPop(int argc, char *argv[], int flags) {
     TEST_EXPECT(fifoLength(q) == 0);
     void *result;
     TEST_EXPECT(fifoPop(q, &result) == false);
-    fifoDelete(q);
+    fifoRelease(q);
     return 0;
 }
 
@@ -62,7 +63,7 @@ int test_fifoEmptyPeek(int argc, char *argv[], int flags) {
     TEST_EXPECT(fifoLength(q) == 0);
     void *result;
     TEST_EXPECT(fifoPeek(q, &result) == false);
-    fifoDelete(q);
+    fifoRelease(q);
     return 0;
 }
 
@@ -77,7 +78,7 @@ int test_fifoSimplePushPop(int argc, char *argv[], int flags) {
     push(q, 1);
     popTest(q, 1);
     TEST_EXPECT(fifoLength(q) == 0);
-    fifoDelete(q);
+    fifoRelease(q);
     return 0;
 }
 
@@ -94,7 +95,7 @@ int test_fifoTryVariousSizes(int argc, char *argv[], int flags) {
         for (int value = 1; value <= items; value++) popTest(q, value);
         TEST_EXPECT(fifoLength(q) == 0);
     }
-    fifoDelete(q);
+    fifoRelease(q);
     return 0;
 }
 
@@ -116,7 +117,7 @@ int test_fifoPushPopTest(int argc, char *argv[], int flags) {
             popTest(q, popVal++);
         }
     }
-    fifoDelete(q);
+    fifoRelease(q);
     return 0;
 }
 
@@ -139,17 +140,17 @@ int test_fifoJoinTest(int argc, char *argv[], int flags) {
                     intptr_t pushValue = 1;
                     intptr_t popQValue = 1;
 
-                    for (int i = 0; i < qLen; i++) fifoPush(q, INT_TO_PTR(pushValue++));
+                    for (int i = 0; i < qLen; i++) fifoPush(q, intToPointer(pushValue++));
                     for (int i = 0; i < qPop; i++) {
                         void *ptr;
-                        TEST_EXPECT(fifoPop(q, &ptr) && PTR_TO_INT(ptr) == popQValue++);
+                        TEST_EXPECT(fifoPop(q, &ptr) && pointerToInt(ptr) == popQValue++);
                     }
 
                     intptr_t popQ2Value = pushValue;
-                    for (int i = 0; i < q2Len; i++) fifoPush(q2, INT_TO_PTR(pushValue++));
+                    for (int i = 0; i < q2Len; i++) fifoPush(q2, intToPointer(pushValue++));
                     for (int i = 0; i < q2Pop; i++) {
                         void *ptr;
-                        TEST_EXPECT(fifoPop(q2, &ptr) && PTR_TO_INT(ptr) == popQ2Value++);
+                        TEST_EXPECT(fifoPop(q2, &ptr) && pointerToInt(ptr) == popQ2Value++);
                     }
 
                     fifoJoin(q, q2);
@@ -162,28 +163,24 @@ int test_fifoJoinTest(int argc, char *argv[], int flags) {
 
                     for (int i = 0; i < (qLen - qPop); i++) {
                         void *ptr;
-                        TEST_EXPECT(fifoPop(temp, &ptr) && PTR_TO_INT(ptr) == popQValue++);
+                        TEST_EXPECT(fifoPop(temp, &ptr) && pointerToInt(ptr) == popQValue++);
                     }
                     for (int i = 0; i < (q2Len - q2Pop); i++) {
                         void *ptr;
-                        TEST_EXPECT(fifoPop(temp, &ptr) && PTR_TO_INT(ptr) == popQ2Value++);
+                        TEST_EXPECT(fifoPop(temp, &ptr) && pointerToInt(ptr) == popQ2Value++);
                     }
                     TEST_EXPECT(fifoLength(temp) == 0);
 
-                    fifoDelete(temp);
+                    fifoRelease(temp);
                 }
             }
         }
     }
 
-    fifoDelete(q);
-    fifoDelete(q2);
+    fifoRelease(q);
+    fifoRelease(q2);
     return 0;
 }
-
-/* Set to 1 to prove that FIFO outperforms ADLIST. This test will exercise both.
- * The test will (intentionally) fail, printing the results as failed assertions. */
-#define COMPARE_PERFORMANCE_TO_ADLIST 0
 
 #include "../adlist.h"
 #include "../monotonic.h"
@@ -193,13 +190,13 @@ const int LIST_ITEMS = 10000;
 static void exerciseList(void) {
     list *q = listCreate();
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
-        listAddNodeTail(q, INT_TO_PTR(i));
+        listAddNodeTail(q, intToPointer(i));
     }
     TEST_EXPECT(listLength(q) == (unsigned)LIST_ITEMS);
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
         listNode *node = listFirst(q);
         listDelNode(q, node);
-        TEST_EXPECT(listNodeValue(node) == INT_TO_PTR(i));
+        TEST_EXPECT(listNodeValue(node) == intToPointer(i));
     }
     TEST_EXPECT(listLength(q) == 0u);
     listRelease(q);
@@ -208,23 +205,25 @@ static void exerciseList(void) {
 static void exerciseFifo(void) {
     fifo *q = fifoCreate();
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
-        fifoPush(q, INT_TO_PTR(i));
+        fifoPush(q, intToPointer(i));
     }
     TEST_EXPECT(fifoLength(q) == LIST_ITEMS);
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
         void *ptr;
-        TEST_EXPECT(fifoPop(q, &ptr) && ptr == INT_TO_PTR(i));
+        TEST_EXPECT(fifoPop(q, &ptr) && ptr == intToPointer(i));
     }
     TEST_EXPECT(fifoLength(q) == 0);
-    fifoDelete(q);
+    fifoRelease(q);
 }
 
 int test_fifoComparePerformance(int argc, char *argv[], int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
     UNUSED(flags);
 
-    if (COMPARE_PERFORMANCE_TO_ADLIST) {
+    /* To run the performance comparison test, use:
+     * ./valkey-unit-tests --single test_fifo.c --compare-performance-to-adlist
+     * This test will exercise both FIFO and ADLIST to compare performance.
+     * The test will (intentionally) fail, printing the results as failed assertions. */
+    if (argc > 3 && !strcasecmp(argv[3], "--compare-performance-to-adlist")) {
         monotonicInit();
         monotime timer;
         const int iterations = 500;
