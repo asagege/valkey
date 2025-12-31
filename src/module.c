@@ -1087,7 +1087,7 @@ int moduleGetCommandChannelsViaAPI(struct serverCommand *cmd, robj **argv, int a
     ctx.keys_result = result;
 
     cp->func(&ctx, (void **)argv, argc);
-    /* We currently always use the array allocated by VM_RM_ChannelAtPosWithFlags() and don't try
+    /* We currently always use the array allocated by VM_ChannelAtPosWithFlags() and don't try
      * to optimize for the pre-allocated buffer. */
     moduleFreeContext(&ctx);
     return result->numkeys;
@@ -1121,8 +1121,7 @@ int VM_IsKeysPositionRequest(ValkeyModuleCtx *ctx) {
  *
  *     if (ValkeyModule_IsKeysPositionRequest(ctx)) {
  *         ValkeyModule_KeyAtPosWithFlags(ctx, 2, VALKEYMODULE_CMD_KEY_RO | VALKEYMODULE_CMD_KEY_ACCESS);
- *         ValkeyModule_KeyAtPosWithFlags(ctx, 1, VALKEYMODULE_CMD_KEY_RW | VALKEYMODULE_CMD_KEY_UPDATE |
- * VALKEYMODULE_CMD_KEY_ACCESS);
+ *         ValkeyModule_KeyAtPosWithFlags(ctx, 1, VALKEYMODULE_CMD_KEY_RW | VALKEYMODULE_CMD_KEY_UPDATE | VALKEYMODULE_CMD_KEY_ACCESS);
  *     }
  *
  *  Note: in the example above the get keys API could have been handled by key-specs (preferred).
@@ -1262,6 +1261,7 @@ int64_t commandFlagsFromString(char *s) {
         else if (!strcasecmp(t,"no-cluster")) flags |= CMD_MODULE_NO_CLUSTER;
         else if (!strcasecmp(t,"no-mandatory-keys")) flags |= CMD_NO_MANDATORY_KEYS;
         else if (!strcasecmp(t,"allow-busy")) flags |= CMD_ALLOW_BUSY;
+        else if (!strcasecmp(t,"all-dbs")) flags |= CMD_ALL_DBS;
         else break;
         /* clang-format on */
     }
@@ -1353,6 +1353,8 @@ ValkeyModuleCommand *moduleCreateCommandProxy(struct ValkeyModule *module,
  * * **"allow-busy"**: Permit the command while the server is blocked either by
  *                     a script or by a slow module command, see
  *                     VM_Yield.
+ * * **"all-dbs"**:     The command accesses all databases and to execute this
+ *                      command user has to have `alldbs`
  * * **"getchannels-api"**: The command implements the interface to return
  *                          the arguments that are channels.
  *
@@ -3976,9 +3978,12 @@ int VM_PublishMessageShard(ValkeyModuleCtx *ctx, ValkeyModuleString *channel, Va
     return pubsubPublishMessageAndPropagateToCluster(channel, message, 1);
 }
 
-/* Return the currently selected DB. */
+/* Return the currently selected DB.
+ * When inside a MULTI/EXEC transaction, returns transaction_db_id which tracks
+ * the DB selected within the transaction (may differ from client->db->id).
+ * Otherwise, returns the client's actual DB. */
 int VM_GetSelectedDb(ValkeyModuleCtx *ctx) {
-    return ctx->client->db->id;
+    return (ctx->client->flag.multi) ? ctx->client->mstate->transaction_db_id : ctx->client->db->id;
 }
 
 
@@ -5322,6 +5327,26 @@ int VM_ZsetRangePrev(ValkeyModuleKey *key) {
  * See also VM_ValueLength(), which returns the number of fields in a hash.
  * -------------------------------------------------------------------------- */
 
+/* Sets the value of a hash field to a non-owning string reference (stringRef)
+ * pointing to the buffer parameter, which remains owned by the module.
+ *
+ * NOTE: This API is designed for memory efficiency by avoiding memory duplication
+ * between the module and the core engine, which is critical when the buffer size is large.
+ * For example, valkey-search uses this interface to avoid maintaining two copies of the
+ * indexed vectors.
+ *
+ * The function receives the hash key, field name, buffer to share along with its size. */
+int VM_HashSetStringRef(ValkeyModuleKey *key, ValkeyModuleString *field, const char *buf, size_t len) {
+    if (!key || !key->value || key->value->type != OBJ_HASH || !field || !buf) return VALKEYMODULE_ERR;
+    return hashTypeUpdateAsStringRef(key->value, field->ptr, buf, len);
+}
+
+/* Checks if the value of a hash entry is a shared string reference (stringRef).
+ * The function receives the hash key and field name to perform the check against. */
+int VM_HashHasStringRef(ValkeyModuleKey *key, ValkeyModuleString *field) {
+    if (!key || !key->value || key->value->type != OBJ_HASH) return VALKEYMODULE_ERR;
+    return hashTypeHasStringRef(key->value, field->ptr);
+}
 /* Set the field of the specified hash field to the specified value.
  * If the key is an empty key open for writing, it is created with an empty
  * hash value, in order to set the specified field.
@@ -6593,7 +6618,8 @@ ValkeyModuleCallReply *VM_Call(ValkeyModuleCtx *ctx, const char *cmdname, const 
         int acl_errpos;
         int acl_retval;
 
-        acl_retval = ACLCheckAllUserCommandPerm(user, c->cmd, c->argv, c->argc, &acl_errpos);
+        int dbid = (c->flag.multi) ? c->mstate->transaction_db_id : c->db->id;
+        acl_retval = ACLCheckAllUserCommandPerm(user, c->cmd, c->argv, c->argc, dbid, &acl_errpos);
         if (acl_retval != ACL_OK) {
             int context = scriptIsRunning() ? ACL_LOG_CTX_SCRIPT : ACL_LOG_CTX_MODULE;
             sds object = (acl_retval == ACL_DENIED_CMD) ? sdsdup(c->cmd->fullname) : sdsdup(c->argv[acl_errpos]->ptr);
@@ -6745,6 +6771,12 @@ ValkeyModuleCallReply *VM_Call(ValkeyModuleCtx *ctx, const char *cmdname, const 
         if (!(flags & VALKEYMODULE_ARGV_NO_REPLICAS)) call_flags |= CMD_CALL_PROPAGATE_REPL;
     }
     call(c, call_flags);
+
+    /* Propagate database changes from the temporary client back to the context client
+     * when running in script mode to make next commands execute in the correct db */
+    if (c && (flags & VALKEYMODULE_ARGV_SCRIPT_MODE) && is_running_script && c->db != ctx->client->db) {
+        ctx->client->db = c->db;
+    }
 
     /* We reset errno here because on macOS some system calls set errno even when
      * they succeed. For instance, certain time-related syscalls may set errno
@@ -10104,6 +10136,14 @@ ValkeyModuleUser *VM_GetModuleUserFromUserName(ValkeyModuleString *name) {
  *
  * * ENOENT: Specified command does not exist.
  * * EACCES: Command cannot be executed, according to ACL rules
+ *
+ * NOTE: Since 9.1, the underlying ACL check will NOT validate the user's access to the database.
+ * For users WITHOUT the `alldbs` flag: VALKEYMODULE_ERR will be returned for any
+ * READ or WRITE command, even if the user has permission to access the current database.
+ *
+ * For comprehensive ACL validation that handles all types of permissions for users, it is
+ * recommended to use VM_ACLCheckPermissions() instead, which accepts a dbid parameter
+ * and properly validates access.
  */
 int VM_ACLCheckCommandPermissions(ValkeyModuleUser *user, ValkeyModuleString **argv, int argc) {
     int keyidxptr;
@@ -10115,7 +10155,7 @@ int VM_ACLCheckCommandPermissions(ValkeyModuleUser *user, ValkeyModuleString **a
         return VALKEYMODULE_ERR;
     }
 
-    if (ACLCheckAllUserCommandPerm(user->user, cmd, argv, argc, &keyidxptr) != ACL_OK) {
+    if (ACLCheckAllUserCommandPerm(user->user, cmd, argv, argc, -1, &keyidxptr) != ACL_OK) {
         errno = EACCES;
         return VALKEYMODULE_ERR;
     }
@@ -10186,6 +10226,61 @@ int VM_ACLCheckChannelPermissions(ValkeyModuleUser *user, ValkeyModuleString *ch
     return VALKEYMODULE_OK;
 }
 
+/* Check if the command with its arguments can be executed by the user, according to the
+ * ACLs associated with it. This function performs a comprehensive ACL check including:
+ * - Command permissions
+ * - Key permissions
+ * - Channel permissions
+ * - Database permissions
+ *
+ * On success VALKEYMODULE_OK is returned, otherwise VALKEYMODULE_ERR is returned and
+ * errno is set to one of the following values:
+ * * EINVAL: Invalid arguments (e.g., negative dbid or dbid >= server.dbnum, command does not exist)
+ * * EACCES: Permission denied (for any ACL violation)
+ *
+ * The optional denial_reason parameter can be used to get more specific information about
+ * why the permission was denied. If provided (not NULL), it will be set to one of:
+ * * VALKEYMODULE_ACL_LOG_CMD: User does not have permission to execute the command
+ * * VALKEYMODULE_ACL_LOG_KEY: User does not have permission to access a key
+ * * VALKEYMODULE_ACL_LOG_CHANNEL: User does not have permission to access a channel
+ * * VALKEYMODULE_ACL_LOG_DB: User does not have permission to access the database
+ */
+int VM_ACLCheckPermissions(ValkeyModuleUser *user,
+                           ValkeyModuleString **argv,
+                           int argc,
+                           int dbid,
+                           ValkeyModuleACLLogEntryReason *denial_reason) {
+    int keyidxptr;
+    struct serverCommand *cmd;
+
+    if (dbid < 0 || dbid >= server.dbnum) {
+        errno = EINVAL;
+        return VALKEYMODULE_ERR;
+    }
+
+    if ((cmd = lookupCommand(argv, argc)) == NULL) {
+        errno = EINVAL;
+        return VALKEYMODULE_ERR;
+    }
+
+    int acl_retval = ACLCheckAllUserCommandPerm(user->user, cmd, argv, argc, dbid, &keyidxptr);
+    if (acl_retval != ACL_OK) {
+        errno = EACCES;
+        if (denial_reason) {
+            switch (acl_retval) {
+            case ACL_DENIED_CMD: *denial_reason = VALKEYMODULE_ACL_LOG_CMD; break;
+            case ACL_DENIED_KEY: *denial_reason = VALKEYMODULE_ACL_LOG_KEY; break;
+            case ACL_DENIED_CHANNEL: *denial_reason = VALKEYMODULE_ACL_LOG_CHANNEL; break;
+            case ACL_DENIED_DB: *denial_reason = VALKEYMODULE_ACL_LOG_DB; break;
+            default: *denial_reason = VALKEYMODULE_ACL_LOG_CMD; break;
+            }
+        }
+        return VALKEYMODULE_ERR;
+    }
+
+    return VALKEYMODULE_OK;
+}
+
 /* Helper function to map a ValkeyModuleACLLogEntryReason to ACL Log entry reason. */
 int moduleGetACLLogEntryReason(ValkeyModuleACLLogEntryReason reason) {
     int acl_reason = 0;
@@ -10194,6 +10289,7 @@ int moduleGetACLLogEntryReason(ValkeyModuleACLLogEntryReason reason) {
     case VALKEYMODULE_ACL_LOG_KEY: acl_reason = ACL_DENIED_KEY; break;
     case VALKEYMODULE_ACL_LOG_CHANNEL: acl_reason = ACL_DENIED_CHANNEL; break;
     case VALKEYMODULE_ACL_LOG_CMD: acl_reason = ACL_DENIED_CMD; break;
+    case VALKEYMODULE_ACL_LOG_DB: acl_reason = ACL_DENIED_DB; break;
     default: break;
     }
     return acl_reason;
@@ -11453,8 +11549,9 @@ static void moduleScanKeyHashtableCallback(void *privdata, void *entry) {
         value = createStringObjectFromLongDouble(node->score, 0);
     } else if (o->type == OBJ_HASH) {
         key = entryGetField(entry);
-        sds val = entryGetValue(entry);
-        value = createStringObject(val, sdslen(val));
+        size_t val_len;
+        char *val = entryGetValue(entry, &val_len);
+        value = createStringObject(val, val_len);
     } else {
         serverPanic("unexpected object type");
     }
@@ -14391,6 +14488,8 @@ void moduleRegisterCoreAPI(void) {
     REGISTER_API(ZsetRangeEndReached);
     REGISTER_API(HashSet);
     REGISTER_API(HashGet);
+    REGISTER_API(HashSetStringRef);
+    REGISTER_API(HashHasStringRef);
     REGISTER_API(StreamAdd);
     REGISTER_API(StreamDelete);
     REGISTER_API(StreamIteratorStart);
@@ -14592,6 +14691,7 @@ void moduleRegisterCoreAPI(void) {
     REGISTER_API(ACLCheckCommandPermissions);
     REGISTER_API(ACLCheckKeyPermissions);
     REGISTER_API(ACLCheckChannelPermissions);
+    REGISTER_API(ACLCheckPermissions);
     REGISTER_API(ACLAddLogEntry);
     REGISTER_API(ACLAddLogEntryByUserName);
     REGISTER_API(FreeModuleUser);
