@@ -13,7 +13,6 @@ dump*.rdb
 *-cli
 *-sentinel
 *-server
-*-unit-tests
 *-unit-gtests
 doc-tools
 release

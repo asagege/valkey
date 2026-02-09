@@ -35,19 +35,24 @@ This framework depends on GoogleTest and GoogleMock. You need to install them ma
 before building the gtests (e.g., `libgtest-dev` / `libgmock-dev` on Debian/Ubuntu,
 `gtest-devel` / `gmock-devel` on CentOS/Fedora, or `brew install googletest` on macOS).
 
+Alternatively, you can build and install GoogleTest from source:
+
+```bash
+git clone https://github.com/google/googletest.git
+cd googletest
+mkdir build && cd build
+cmake ..
+make
+sudo make install
+```
+
 ## Tricks in running unit tests
 
 Sometimes the developer might want to run only one gtest unit test, or only a
 subset of all unit tests for debugging. We have a few different flavors of
 gtest unit tests that you can filter/play with:
 
-1. Running all unit tests (C unit tests and gtest unit tests)
-
-   ```bash
-   make test-unit
-   ```
-
-2. Running all gtest unit tests
+1. Running all gtest unit tests
 
    ```bash
    make test-gtest
@@ -78,3 +83,18 @@ gtest unit tests that you can filter/play with:
    make valkey-unit-gtests
    ./bin/valkey-unit-gtests
    ```
+
+## Test flags
+
+The gtest framework supports several command-line flags to control test behavior:
+
+* `--accurate`: Indicates the test should use extra computation to more accurately validate the tests.
+* `--large-memory`: Indicates whether tests should use more than 100mb of memory.
+* `--valgrind`: A hint passed to tests to indicate that we are running under valgrind.
+* `--seed <number>`: Sets a specific random seed for reproducible test runs. All `rand()` calls will produce the same sequence with the same seed.
+
+Example usage:
+
+```bash
+./src/gtest/valkey-unit-gtests --accurate --large-memory --seed 12345
+```
