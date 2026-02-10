@@ -6,21 +6,21 @@
 
 #include "generated_wrappers.hpp"
 
-#include <cstdio>
 #include <climits>
-#include <cstring>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
 
 extern "C" {
 #include "fmacros.h"
 #include "hashtable.h"
+#include "monotonic.h"
 #include "mt19937-64.h"
 #include "zmalloc.h"
-#include "monotonic.h"
 
 extern bool accurate;
 extern bool large_memory;
-extern char* seed;
+extern char *seed;
 /* From util.c: getRandomBytes to seed hash function. */
 void getRandomBytes(unsigned char *p, size_t len);
 }
@@ -117,7 +117,7 @@ size_t nextCursor(size_t v, size_t mask);
 }
 
 class HashtableTest : public ::testing::Test {
-protected:
+  protected:
     static void SetUpTestSuite() {
         /* Initialize monotonic clock once for all tests */
         monotonicInit();

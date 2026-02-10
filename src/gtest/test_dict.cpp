@@ -49,7 +49,7 @@ char *stringFromLongLong(long long value) {
 dictType BenchmarkDictType = {hashCallback, nullptr, compareCallback, freeCallback, nullptr, nullptr};
 
 class DictTest : public ::testing::Test {
-protected:
+  protected:
     dict *_dict = nullptr;
     long j;
     int retval;
@@ -321,12 +321,12 @@ TEST_F(DictTest, DISABLED_dictBenchmark) {
     dict *dict = dictCreate(&BenchmarkDictType);
     long count = accurate ? 5000000 : 5000;
 
-    #define start_benchmark() start = gtest_time_in_milliseconds()
-    #define end_benchmark(msg)                                      \
-        do {                                                        \
-            elapsed = gtest_time_in_milliseconds() - start;         \
-            printf(msg ": %ld items in %lld ms\n", count, elapsed); \
-        } while (0)
+#define start_benchmark() start = gtest_time_in_milliseconds()
+#define end_benchmark(msg)                                      \
+    do {                                                        \
+        elapsed = gtest_time_in_milliseconds() - start;         \
+        printf(msg ": %ld items in %lld ms\n", count, elapsed); \
+    } while (0)
 
     start_benchmark();
     for (j = 0; j < count; j++) {
@@ -397,6 +397,6 @@ TEST_F(DictTest, DISABLED_dictBenchmark) {
     end_benchmark("Removing and adding");
     dictRelease(dict);
 
-    #undef start_benchmark
-    #undef end_benchmark
+#undef start_benchmark
+#undef end_benchmark
 }

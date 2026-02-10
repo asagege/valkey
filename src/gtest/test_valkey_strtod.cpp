@@ -18,7 +18,7 @@ class ValkeyStrtodTest : public ::testing::Test {};
 TEST_F(ValkeyStrtodTest, TestValkeyStrtod) {
     errno = 0;
     double value = valkey_strtod("231.2341234", nullptr);
-    EXPECT_EQ(value, 231.2341234);
+    EXPECT_DOUBLE_EQ(value, 231.2341234);
     EXPECT_EQ(errno, 0);
 
     value = valkey_strtod("+inf", nullptr);

@@ -10,9 +10,9 @@
 #include <sys/time.h>
 
 extern "C" {
-#include "listpack.h"
-#include "fmacros.h"
 #include "adlist.h"
+#include "fmacros.h"
+#include "listpack.h"
 #include "sds.h"
 #include "zmalloc.h"
 
@@ -27,9 +27,10 @@ void sdsfreeVoid(void *ptr);
 #define LP_INTBUF_SIZE 21 /* 20 digits of -2^63 + 1 null term. */
 
 /* Macros from listpack.c needed for testing */
-#define LP_HDR_SIZE 6       /* 32 bit total len + 16 bit number of elements. */
+#define LP_HDR_SIZE 6u /* 32 bit total len + 16 bit number of elements. */
 #define LP_EOF 0xFF
-#define LP_HDR_NUMELE_UNKNOWN UINT16_MAX
+#define LP_HDR_NUMELE_UNKNOWN static_cast<uint32_t>(UINT16_MAX)
+#define LP_HDR_NUMELE_UNKNOWN_UL static_cast<unsigned long>(UINT16_MAX)
 #define LP_ENCODING_7BIT_UINT_MASK 0x80
 #define LP_ENCODING_IS_7BIT_UINT(byte) (((byte) & LP_ENCODING_7BIT_UINT_MASK) == 0)
 #define LP_ENCODING_6BIT_STR 0x80
@@ -178,7 +179,7 @@ static int lpValidation(unsigned char *p, unsigned int head_count, void *userdat
 }
 
 class ListpackTest : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {
         /* Seed random for tests that need it */
         srand(0);
@@ -362,7 +363,7 @@ TEST_F(ListpackTest, listpackDeleteWhenNumIsMinusOne) {
     lp = lpDeleteRange(lp, 0, -1);
     EXPECT_EQ(lpLength(lp), 0u);
     EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), LP_HDR_SIZE + 1);
+    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
     zfree(lp);
 
     lp = createList();
@@ -370,7 +371,7 @@ TEST_F(ListpackTest, listpackDeleteWhenNumIsMinusOne) {
     lp = lpDeleteRangeWithEntry(lp, &ptr, -1);
     EXPECT_EQ(lpLength(lp), 0u);
     EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), LP_HDR_SIZE + 1);
+    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
     zfree(lp);
 }
 
@@ -382,7 +383,7 @@ TEST_F(ListpackTest, listpackDeleteWithNegativeIndex) {
     lp = lpDeleteRange(lp, -4, 4);
     EXPECT_EQ(lpLength(lp), 0u);
     EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), LP_HDR_SIZE + 1);
+    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
     zfree(lp);
 
     lp = createList();
@@ -390,7 +391,7 @@ TEST_F(ListpackTest, listpackDeleteWithNegativeIndex) {
     lp = lpDeleteRangeWithEntry(lp, &ptr, 4);
     EXPECT_EQ(lpLength(lp), 0u);
     EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), LP_HDR_SIZE + 1);
+    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
     zfree(lp);
 }
 
@@ -518,12 +519,13 @@ TEST_F(ListpackTest, listpackReplaceWithSameSize) {
     lp = lpReplace(lp, &p, reinterpret_cast<unsigned char *>(const_cast<char *>("65536")), 5);
     p = lpSeek(lp, 0);
     EXPECT_EQ(memcmp(reinterpret_cast<char *>(p),
-                        "\x85zoink\x06"
-                        "\xf2\x00\x00\x01\x04" /* 65536 as int24 */
-                        "\x84quux\05"
-                        "\x81y\x02"
-                        "\xff",
-                        22), 0);
+                     "\x85zoink\x06"
+                     "\xf2\x00\x00\x01\x04" /* 65536 as int24 */
+                     "\x84quux\05"
+                     "\x81y\x02"
+                     "\xff",
+                     22),
+              0);
     EXPECT_EQ(lp, orig_lp); /* no reallocations have happened */
     lpFree(lp);
 }
@@ -537,12 +539,13 @@ TEST_F(ListpackTest, listpackReplaceWithDifferentSize) {
     lp = lpReplace(lp, &p, reinterpret_cast<unsigned char *>(const_cast<char *>("squirrel")), 8);
     p = lpSeek(lp, 0);
     EXPECT_EQ(strncmp(reinterpret_cast<char *>(p),
-                         "\x85hello\x06"
-                         "\x88squirrel\x09"
-                         "\x84quux\x05"
-                         "\xc4\x00\x02"
-                         "\xff",
-                         27), 0);
+                      "\x85hello\x06"
+                      "\x88squirrel\x09"
+                      "\x84quux\x05"
+                      "\xc4\x00\x02"
+                      "\xff",
+                      27),
+              0);
     lpFree(lp);
 }
 
@@ -956,15 +959,15 @@ TEST_F(ListpackTest, listpackNumberOfElementsExceedsLP_HDR_NUMELE_UNKNOWN) {
     unsigned char *lp;
 
     lp = lpNew(0);
-    for (int i = 0; i < LP_HDR_NUMELE_UNKNOWN + 1; i++)
+    for (uint32_t i = 0; i < LP_HDR_NUMELE_UNKNOWN + 1; i++)
         lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("1")), 1);
 
     EXPECT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN);
-    EXPECT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN + 1);
+    EXPECT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN_UL + 1);
 
     lp = lpDeleteRange(lp, -2, 2);
     EXPECT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN);
-    EXPECT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN - 1);
+    EXPECT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN_UL - 1);
     EXPECT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN - 1); /* update length after lpLength */
     lpFree(lp);
 }
@@ -1060,7 +1063,7 @@ TEST_F(ListpackTest, DISABLED_listpackSTressWithVariableSize) {
  */
 
 class ListpackBenchmark : public ::testing::Test {
-protected:
+  protected:
     static unsigned char *lp;
     static int iteration;
 
@@ -1169,4 +1172,3 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkFree) {
     // to maintain the same test structure as test_listpack.c
     EXPECT_NE(lp, nullptr);
 }
-

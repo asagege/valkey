@@ -1,8 +1,16 @@
+/*
+ * Copyright (c) Valkey Contributors
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 extern "C" {
+#include "sha256.h"
 #include "util.h"
 }
 
@@ -33,7 +41,36 @@ int main(int argc, char **argv) {
     seed = getFlagValue(argc, argv, "--seed");
     if (seed) {
         srandom(static_cast<unsigned>(atoi(seed)));
-        setRandomSeedCString(seed, strlen(seed));
+
+        // Convert the seed to a 128-character hexadecimal string
+        // by hashing it with SHA256 twice (to get 64 bytes = 128 hex chars)
+        char seed_hex[129];
+        SHA256_CTX ctx;
+        unsigned char hash[SHA256_BLOCK_SIZE];
+
+        // First hash
+        sha256_init(&ctx);
+        sha256_update(&ctx, reinterpret_cast<const unsigned char *>(seed), strlen(seed));
+        sha256_final(&ctx, hash);
+
+        // Convert first hash to hex (32 bytes = 64 hex chars)
+        for (int i = 0; i < SHA256_BLOCK_SIZE; i++) {
+            snprintf(seed_hex + (i * 2), 3, "%02X", hash[i]);
+        }
+
+        // Second hash to get another 32 bytes
+        sha256_init(&ctx);
+        sha256_update(&ctx, hash, SHA256_BLOCK_SIZE);
+        sha256_final(&ctx, hash);
+
+        // Convert second hash to hex (32 bytes = 64 hex chars)
+        for (int i = 0; i < SHA256_BLOCK_SIZE; i++) {
+            snprintf(seed_hex + 64 + (i * 2), 3, "%02X", hash[i]);
+        }
+        seed_hex[128] = '\0';
+
+        // Now we have a 128-character hex string
+        setRandomSeedCString(seed_hex, strlen(seed_hex));
     }
 
     // The following line must be executed to initialize GoogleTest before running the tests.

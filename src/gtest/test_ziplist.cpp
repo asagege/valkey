@@ -7,10 +7,10 @@
 #include "generated_wrappers.hpp"
 
 extern "C" {
-#include "fmacros.h"
 #include "adlist.h"
-#include "zmalloc.h"
+#include "fmacros.h"
 #include "ziplist.h"
+#include "zmalloc.h"
 
 extern bool accurate;
 /* External declarations for internal ziplist.c types and symbols needed for testing */
@@ -150,14 +150,14 @@ static void verify(unsigned char *zl, zlentry *e) {
 }
 
 static unsigned char *insertHelper(unsigned char *zl, char ch, size_t len, unsigned char *pos) {
-    EXPECT_LE(len, ZIP_BIG_PREVLEN);
+    EXPECT_LE(len, static_cast<size_t>(ZIP_BIG_PREVLEN));
     unsigned char data[ZIP_BIG_PREVLEN] = {0};
     memset(data, ch, len);
     return ziplistInsert(zl, pos, data, len);
 }
 
 static int compareHelper(unsigned char *zl, char ch, size_t len, int index) {
-    EXPECT_LE(len, ZIP_BIG_PREVLEN);
+    EXPECT_LE(len, static_cast<size_t>(ZIP_BIG_PREVLEN));
     unsigned char data[ZIP_BIG_PREVLEN] = {0};
     memset(data, ch, len);
     unsigned char *p = ziplistIndex(zl, index);
@@ -174,7 +174,7 @@ static size_t strEntryBytesLarge(size_t slen) {
 }
 
 class ZiplistTest : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {
         srand(0);
     }
@@ -637,7 +637,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistStressWithRandomPayloadsOfDifferentEncoding)
     int i, j, len, where;
     unsigned char *p;
     char buf[1024];
-    int buflen;
+    int buflen = 0;
     list *ref;
     listNode *refnode;
 

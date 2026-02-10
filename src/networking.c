@@ -6558,8 +6558,7 @@ void gtest_backupAndUpdateClientArgv(client *c, int new_argc, robj **new_argv) {
     backupAndUpdateClientArgv(c, new_argc, new_argv);
 }
 
-size_t gtest_upsertPayloadHeader(char *buf, size_t *bufpos, payloadHeader **last_header,
-                                   uint8_t type, size_t len, int slot, size_t available) {
+size_t gtest_upsertPayloadHeader(char *buf, size_t *bufpos, payloadHeader **last_header, uint8_t type, size_t len, int slot, size_t available) {
     return upsertPayloadHeader(buf, bufpos, last_header, type, len, slot, 0, available);
 }
 
@@ -6587,8 +6586,7 @@ void gtest_addBulkStrRefToBufferOrList(client *c, robj *obj) {
     _addBulkStrRefToBufferOrList(c, obj);
 }
 
-void gtest_initReplyIOV(client *c, int iovsize, struct iovec *iov_arr,
-                         char (*prefixes)[BULK_STR_LEN_PREFIX_MAX_SIZE], char *crlf, replyIOV *reply) {
+void gtest_initReplyIOV(client *c, int iovsize, struct iovec *iov_arr, char (*prefixes)[BULK_STR_LEN_PREFIX_MAX_SIZE], char *crlf, replyIOV *reply) {
     initReplyIOV(c, iovsize, iov_arr, prefixes, crlf, reply);
 }
 

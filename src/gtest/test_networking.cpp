@@ -63,16 +63,14 @@ int clusterSlotStatsEnabled(int slot);
 void gtest_postWriteToReplica(client *c);
 void gtest_writeToReplica(client *c);
 void gtest_backupAndUpdateClientArgv(client *c, int new_argc, robj **new_argv);
-size_t gtest_upsertPayloadHeader(char *buf, size_t *bufpos, payloadHeader **last_header,
-                                   uint8_t type, size_t len, int slot, size_t available);
+size_t gtest_upsertPayloadHeader(char *buf, size_t *bufpos, payloadHeader **last_header, uint8_t type, size_t len, int slot, size_t available);
 int gtest_isCopyAvoidPreferred(client *c, robj *obj);
 size_t gtest_addReplyPayloadToBuffer(client *c, const void *payload, size_t len, uint8_t payload_type);
 size_t gtest_addBulkStrRefToBuffer(client *c, const void *payload, size_t len);
 void gtest_addReplyPayloadToList(client *c, list *reply_list, const char *payload, size_t len, uint8_t payload_type);
 void gtest_addBulkStrRefToToList(client *c, const void *payload, size_t len);
 void gtest_addBulkStrRefToBufferOrList(client *c, robj *obj);
-void gtest_initReplyIOV(client *c, int iovsize, struct iovec *iov_arr,
-                         char (*prefixes)[BULK_STR_LEN_PREFIX_MAX_SIZE], char *crlf, replyIOV *reply);
+void gtest_initReplyIOV(client *c, int iovsize, struct iovec *iov_arr, char (*prefixes)[BULK_STR_LEN_PREFIX_MAX_SIZE], char *crlf, replyIOV *reply);
 void gtest_addPlainBufferToReplyIOV(char *buf, size_t buf_len, replyIOV *reply, bufWriteMetadata *metadata);
 void gtest_addBulkStringToReplyIOV(char *buf, size_t buf_len, replyIOV *reply, bufWriteMetadata *metadata);
 void gtest_addEncodedBufferToReplyIOV(char *buf, size_t bufpos, replyIOV *reply, bufWriteMetadata *metadata);
@@ -171,7 +169,7 @@ static fakeConnection *connCreateFake(void) {
 
 /* Test fixture for networking tests - minimal fixture with no setup/teardown */
 class NetworkingTest : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {
         /* Initialize server fields that are accessed by networking functions */
         server.commandlog[COMMANDLOG_TYPE_LARGE_REPLY].threshold = -1; /* Disable tracking */
@@ -200,7 +198,7 @@ TEST_F(NetworkingTest, TestWriteToReplica) {
         replBufBlock *block = static_cast<replBufBlock *>(zmalloc(sizeof(replBufBlock) + 128));
         block->size = 128;
         block->used = 64;
-        block->refcount = 1;  /* Initialize refcount - client will reference it */
+        block->refcount = 1; /* Initialize refcount - client will reference it */
         memset(block->buf, 'A', 64);
 
         /* Setup client state */
@@ -237,10 +235,10 @@ TEST_F(NetworkingTest, TestWriteToReplica) {
         replBufBlock *block2 = static_cast<replBufBlock *>(zmalloc(sizeof(replBufBlock) + 128));
         block1->size = 128;
         block1->used = 64;
-        block1->refcount = 1;  /* Initialize refcount */
+        block1->refcount = 1; /* Initialize refcount */
         block2->size = 128;
         block2->used = 32;
-        block2->refcount = 0;  /* Not referenced by client initially */
+        block2->refcount = 0; /* Not referenced by client initially */
         memset(block1->buf, 'A', 64);
         memset(block2->buf, 'B', 32);
 
@@ -356,7 +354,7 @@ TEST_F(NetworkingTest, TestPostWriteToReplica) {
         gtest_postWriteToReplica(c);
 
         EXPECT_EQ(server.stat_net_repl_output_bytes, 30);
-        EXPECT_EQ(c->repl_data->ref_block_pos, 50); /* 20 + 30 */
+        EXPECT_EQ(c->repl_data->ref_block_pos, 50u); /* 20 + 30 */
         EXPECT_EQ(c->repl_data->ref_repl_buf_node, listFirst(server.repl_buffer_blocks));
         EXPECT_EQ(block->refcount, 1);
 
@@ -387,7 +385,7 @@ TEST_F(NetworkingTest, TestPostWriteToReplica) {
         gtest_postWriteToReplica(c);
 
         EXPECT_EQ(server.stat_net_repl_output_bytes, 50);
-        EXPECT_EQ(c->repl_data->ref_block_pos, 16); /* (30 + 50) - 64 */
+        EXPECT_EQ(c->repl_data->ref_block_pos, 16u); /* (30 + 50) - 64 */
         EXPECT_EQ(c->repl_data->ref_repl_buf_node, listLast(server.repl_buffer_blocks));
         EXPECT_EQ(block1->refcount, 0);
         EXPECT_EQ(block2->refcount, 1);
@@ -416,7 +414,7 @@ TEST_F(NetworkingTest, TestPostWriteToReplica) {
         gtest_postWriteToReplica(c);
 
         EXPECT_EQ(server.stat_net_repl_output_bytes, 34);
-        EXPECT_EQ(c->repl_data->ref_block_pos, 64);
+        EXPECT_EQ(c->repl_data->ref_block_pos, 64u);
         EXPECT_EQ(c->repl_data->ref_repl_buf_node, listFirst(server.repl_buffer_blocks));
         EXPECT_EQ(block->refcount, 1); /* we don't free the last block even if it's fully written */
 
@@ -452,8 +450,8 @@ TEST_F(NetworkingTest, TestBackupAndUpdateClientArgv) {
     EXPECT_EQ(c->original_argc, 2);
     EXPECT_EQ(c->argc, 3);
     EXPECT_EQ(c->argv_len, 3);
-    EXPECT_EQ(c->argv[0]->refcount, 2);
-    EXPECT_EQ(c->argv[1]->refcount, 2);
+    EXPECT_EQ(c->argv[0]->refcount, 2u);
+    EXPECT_EQ(c->argv[1]->refcount, 2u);
     EXPECT_EQ(c->argv[2], nullptr);
 
     /* Test 2: Direct argv replacement */
@@ -469,8 +467,8 @@ TEST_F(NetworkingTest, TestBackupAndUpdateClientArgv) {
     EXPECT_NE(c->original_argv, c->argv);
     EXPECT_EQ(c->original_argv, initial_argv);
     EXPECT_EQ(c->original_argc, 2);
-    EXPECT_EQ(c->original_argv[0]->refcount, 1);
-    EXPECT_EQ(c->original_argv[1]->refcount, 1);
+    EXPECT_EQ(c->original_argv[0]->refcount, 1u);
+    EXPECT_EQ(c->original_argv[1]->refcount, 1u);
 
     /* Test 3: Expanding argc */
     gtest_backupAndUpdateClientArgv(c, 4, nullptr);
@@ -516,11 +514,11 @@ TEST_F(NetworkingTest, TestRewriteClientCommandArgument) {
     rewriteClientCommandArgument(c, 1, newval);
 
     EXPECT_EQ(c->argv[1], newval);
-    EXPECT_EQ(c->argv[1]->refcount, 2);
-    EXPECT_EQ(c->argv_len_sum, 14); // 3 + 6 + 5
+    EXPECT_EQ(c->argv[1]->refcount, 2u);
+    EXPECT_EQ(c->argv_len_sum, 14u); // 3 + 6 + 5
     EXPECT_EQ(c->original_argv, initial_argv);
     EXPECT_EQ(c->original_argv[1], original_key);
-    EXPECT_EQ(c->original_argv[1]->refcount, 1);
+    EXPECT_EQ(c->original_argv[1]->refcount, 1u);
 
     /* Test 2: Extend argument vector */
     robj *extraval = createStringObject("extra", 5);
@@ -528,7 +526,7 @@ TEST_F(NetworkingTest, TestRewriteClientCommandArgument) {
 
     EXPECT_EQ(c->argc, 4);
     EXPECT_EQ(c->argv[3], extraval);
-    EXPECT_EQ(c->argv_len_sum, 19); // 3 + 6 + 5 + 5
+    EXPECT_EQ(c->argv_len_sum, 19u); // 3 + 6 + 5 + 5
     EXPECT_EQ(c->original_argv, initial_argv);
 
     /* Cleanup */
@@ -578,7 +576,7 @@ TEST_F(NetworkingTest, TestAddRepliesWithOffloadsToBuffer) {
     robj *obj = createObject(OBJ_STRING, sdscatfmt(sdsempty(), "test"));
     gtest_addBulkStrRefToBufferOrList(c, obj);
 
-    EXPECT_EQ(obj->refcount, 2);
+    EXPECT_EQ(obj->refcount, 2u);
     EXPECT_EQ(c->bufpos, sizeof(payloadHeader) + PTRS_LEN);
 
     payloadHeader *header1 = c->last_header;
@@ -621,7 +619,7 @@ TEST_F(NetworkingTest, TestAddRepliesWithOffloadsToBuffer) {
 
     /* Test 3: Add one more bulk offload to the buffer */
     gtest_addBulkStrRefToBufferOrList(c, obj);
-    EXPECT_EQ(obj->refcount, 3);
+    EXPECT_EQ(obj->refcount, 3u);
     EXPECT_EQ(c->bufpos, 3 * sizeof(payloadHeader) + 3 * PTRS_LEN + 10 * plain_len);
     payloadHeader *header3 = c->last_header;
     EXPECT_EQ(header3->payload_type, BULK_STR_REF);
@@ -666,7 +664,7 @@ TEST_F(NetworkingTest, TestAddRepliesWithOffloadsToList) {
      * then one block is expected in c->reply */
     robj *obj = createObject(OBJ_STRING, sdscatfmt(sdsempty(), "test"));
     gtest_addBulkStrRefToBufferOrList(c, obj);
-    EXPECT_EQ(obj->refcount, 2);
+    EXPECT_EQ(obj->refcount, 2u);
     EXPECT_EQ(c->bufpos, sizeof(payloadHeader) + reply_len);
     EXPECT_EQ(listLength(c->reply), 1u);
 
@@ -687,7 +685,7 @@ TEST_F(NetworkingTest, TestAddRepliesWithOffloadsToList) {
 
     /* Test 2: Add one more bulk offload to the reply list */
     gtest_addBulkStrRefToBufferOrList(c, obj);
-    EXPECT_EQ(obj->refcount, 3);
+    EXPECT_EQ(obj->refcount, 3u);
     EXPECT_EQ(listLength(c->reply), 1u);
     EXPECT_EQ(blk->used, sizeof(payloadHeader) + 2 * PTRS_LEN);
     EXPECT_EQ(header1->payload_type, BULK_STR_REF);
@@ -742,7 +740,7 @@ TEST_F(NetworkingTest, TestAddBufferToReplyIOV) {
     gtest_initReplyIOV(c, iovmax, iov_arr, prefixes, crlf, &reply);
     gtest_addBufferToReplyIOV(c->flag.buf_encoded, c->buf, c->bufpos, &reply, &metadata[0]);
 
-    EXPECT_EQ(reply.iov_len_total, static_cast<size_t>(total_len));
+    EXPECT_EQ(reply.iov_len_total, static_cast<ssize_t>(total_len));
     EXPECT_EQ(reply.iovcnt, 3);
     const char *ptr = expected_reply;
     for (int i = 0; i < reply.iovcnt; ++i) {
@@ -764,7 +762,7 @@ TEST_F(NetworkingTest, TestAddBufferToReplyIOV) {
     replyIOV reply2;
     gtest_initReplyIOV(c, iovmax, iov_arr2, prefixes2, crlf, &reply2);
     gtest_addBufferToReplyIOV(c->flag.buf_encoded, c->buf, c->bufpos, &reply2, &metadata2[0]);
-    EXPECT_EQ(reply2.iov_len_total, static_cast<size_t>(total_len - 1));
+    EXPECT_EQ(reply2.iov_len_total, static_cast<ssize_t>(total_len - 1));
     EXPECT_EQ((*static_cast<char *>(reply2.iov[0].iov_base)), '5');
 
     /* Test 4: Last written buf/pos/data_len after 2nd invocation */
@@ -781,7 +779,7 @@ TEST_F(NetworkingTest, TestAddBufferToReplyIOV) {
     replyIOV reply3;
     gtest_initReplyIOV(c, iovmax, iov_arr3, prefixes3, crlf, &reply3);
     gtest_addBufferToReplyIOV(c->flag.buf_encoded, c->buf, c->bufpos, &reply3, &metadata3[0]);
-    EXPECT_EQ(reply3.iov_len_total, static_cast<size_t>(total_len - 5));
+    EXPECT_EQ(reply3.iov_len_total, static_cast<ssize_t>(total_len - 5));
     EXPECT_EQ((*static_cast<char *>(reply3.iov[0].iov_base)), 'e');
 
     /* Test 6: Last written buf/pos/data_len after 3rd invocation */

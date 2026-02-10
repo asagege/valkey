@@ -26,7 +26,7 @@ static inline intptr_t pointerToInt(void *p) {
 }
 
 class FifoTest : public ::testing::Test {
-protected:
+  protected:
     fifo *q;
 
     void SetUp() override {
@@ -214,5 +214,4 @@ TEST_F(FifoTest, DISABLED_TestFifoComparePerformance) {
 
     double percentImprovement = static_cast<double>(listMs - fifoMs) * 100.0 / listMs;
     printf("List: %ld ms, FIFO: %ld ms, Improvement: %.2f%%\n", listMs, fifoMs, percentImprovement);
-    EXPECT_EQ(percentImprovement, 0.0); /* This will fail, printing result */
 }

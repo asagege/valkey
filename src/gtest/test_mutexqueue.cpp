@@ -15,7 +15,7 @@ extern "C" {
 }
 
 class MutexQueueTest : public ::testing::Test {
-protected:
+  protected:
     mutexQueue *q;
 
     void SetUp() override {
@@ -111,7 +111,7 @@ TEST_F(MutexQueueTest, TestMutexQueueFifoAddMultiple) {
     fifoPush(f, reinterpret_cast<void *>(2));
     fifoPush(f, reinterpret_cast<void *>(3));
     mutexQueueAddMultiple(q, f);
-    EXPECT_EQ(fifoLength(f), 0u);
+    EXPECT_EQ(fifoLength(f), 0L);
     fifoRelease(f);
 
     add(4);

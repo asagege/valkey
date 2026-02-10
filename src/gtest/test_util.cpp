@@ -20,8 +20,8 @@ extern bool valgrind;
 }
 
 #if defined(__linux__)
-#include <sys/statfs.h>
 #include <linux/magic.h>
+#include <sys/statfs.h>
 #endif
 
 class UtilTest : public ::testing::Test {};

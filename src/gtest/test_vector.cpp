@@ -46,11 +46,11 @@ TEST_F(VectorTest, TestVector) {
     }
 
     /* uint8_vector length */
-    EXPECT_EQ(vectorLen(&uint8_vector), 128);
+    EXPECT_EQ(vectorLen(&uint8_vector), 128u);
     /* uint64_vector length */
-    EXPECT_EQ(vectorLen(&uint64_vector), 128);
+    EXPECT_EQ(vectorLen(&uint64_vector), 128u);
     /* struct_vector length */
-    EXPECT_EQ(vectorLen(&struct_vector), 128);
+    EXPECT_EQ(vectorLen(&struct_vector), 128u);
 
     for (uint32_t i = 0; i < vectorLen(&uint8_vector); i++) {
         uint8_t *uint8_item = static_cast<uint8_t *>(vectorGet(&uint8_vector, i));

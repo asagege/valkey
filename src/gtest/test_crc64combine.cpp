@@ -32,16 +32,6 @@ static long long _ustime(void) {
     return ust;
 }
 
-static void genBenchmarkRandomData(char *data, int count) {
-    static uint32_t state = 1234;
-    int i = 0;
-
-    while (count--) {
-        state = (state * 1103515245 + 12345);
-        data[i++] = '0' + ((state >> 16) & 63);
-    }
-}
-
 static int bench_crc64(unsigned char *data, uint64_t size, long long passes, uint64_t check, const char *name, int csv) {
     uint64_t min = size, hash = 0;
     long long original_start = _ustime(), original_end;
@@ -78,94 +68,152 @@ static void bench_combine(const char *label, uint64_t size, uint64_t expect, int
     }
 }
 
-class Crc64CombineTest : public ::testing::Test {};
+static void genBenchmarkRandomData(char *data, int count) {
+    static uint32_t state = 1234;
+    int i = 0;
+
+    while (count--) {
+        state = (state * 1103515245 + 12345);
+        data[i++] = '0' + ((state >> 16) & 63);
+    }
+}
+
+/* Parameter structure for CRC64 benchmark tests */
+struct BenchmarkParams {
+    uint64_t buffer_size;
+    bool csv_output;
+    bool combine_mode;
+
+    std::string ToString() const {
+        std::string result = std::to_string(buffer_size);
+        if (csv_output) result += "_csv";
+        if (combine_mode) result += "_combine";
+        if (!csv_output && !combine_mode) result += "_crc";
+        return result;
+    }
+};
+
+/* Utility function to calculate the number of benchmark passes */
+static uint64_t CalculatePasses(uint64_t buffer_size) {
+    uint64_t passes = (UINT64_C(0x100000000) / buffer_size);
+    passes = passes >= 2 ? passes : 2;
+    passes = passes <= 1000 ? passes : 1000;
+    return passes;
+}
+
+/* Parameterized test class for CRC64 benchmarks */
+class Crc64CombineTest : public ::testing::TestWithParam<BenchmarkParams> {
+  protected:
+    void RunCrcBenchmarks(unsigned char *data, uint64_t size, uint64_t passes, uint64_t expect) {
+        auto params = GetParam();
+
+        if (params.csv_output) {
+            printf("algorithm,buffer,performance,crc64_matches\n");
+        }
+
+        /* get the single-character version for single-byte Redis behavior */
+        set_crc64_cutoffs(0, size + 1);
+        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crc_1byte", params.csv_output), 0);
+
+        set_crc64_cutoffs(size + 1, size + 1);
+        /* run with 8-byte "single" path, crcfaster */
+        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crcspeed", params.csv_output), 0);
+
+        /* run with dual 8-byte paths */
+        set_crc64_cutoffs(1, size + 1);
+        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crcdual", params.csv_output), 0);
+
+        /* run with tri 8-byte paths */
+        set_crc64_cutoffs(1, 1);
+        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crctri", params.csv_output), 0);
+    }
+
+    void RunCombineBenchmarks(uint64_t size, uint64_t expect) {
+        auto params = GetParam();
+        const uint64_t INIT_SIZE = UINT64_C(0xffffffffffffffff);
+
+        long long init_start = _ustime();
+        crc64_combine(UINT64_C(0xdeadbeefdeadbeef), UINT64_C(0xfeebdaedfeebdaed), INIT_SIZE, BENCH_RPOLY, 64);
+        long long init_end = _ustime();
+
+        init_end = (init_end - init_start) * 1000;
+        if (params.csv_output) {
+            printf("operation,size,nanoseconds\n");
+            printf("init_64,%" PRIu64 ",%" PRIu64 "\n", INIT_SIZE, static_cast<uint64_t>(init_end));
+        } else {
+            printf("init_64 size=%" PRIu64 " in %" PRIu64 " nsec\n", INIT_SIZE, static_cast<uint64_t>(init_end));
+        }
+        /* use the hash itself as the size (unpredictable) */
+        bench_combine("hash_as_size_combine", size, expect, params.csv_output);
+        /* let's do something big (predictable, so fast) */
+        bench_combine("largest_combine", INIT_SIZE, expect, params.csv_output);
+        bench_combine("combine", size, expect, params.csv_output);
+    }
+};
 
 /* This is a special unit test useful for benchmarking crc64combine performance.
- * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=Crc64CombineTest.DISABLED_TestCrc64CombineBenchmark --gtest_also_run_disabled_tests
  *
- * The original C version supported command-line arguments:
- *   --csv              Output in CSV format
- *   -l                 Loop. Run the tests forever
- *   --crc <bytes>      Benchmark crc64 faster options, using a buffer this big
- *   --combine          Benchmark crc64 combine value ranges and timings
+ * To run all benchmark tests:
+ *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*' --gtest_also_run_disabled_tests
  *
- * For GoogleTest, use --gtest_repeat=-1 for infinite looping.
- * Modify the test code below to change buffer size, csv output, or combine mode. */
-TEST_F(Crc64CombineTest, DISABLED_TestCrc64CombineBenchmark) {
-    uint64_t crc64_test_size = 16384; // Default size (change as needed)
-    int csv = 0, combine = 0;
+ * To run specific buffer size (e.g., 16384 bytes):
+ *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*16384*' --gtest_also_run_disabled_tests
+ *
+ * To run CSV output tests:
+ *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*csv*' --gtest_also_run_disabled_tests
+ *
+ * To run combine mode tests:
+ *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*combine*' --gtest_also_run_disabled_tests
+ *
+ * For infinite looping (equivalent to original -l flag):
+ *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*' --gtest_also_run_disabled_tests --gtest_repeat=-1
+ *
+ * Migration notes from original C test:
+ *   - Command-line args replaced with test parameters and GoogleTest filters
+ *   - Loop mode (-l) replaced with --gtest_repeat=-1
+ *   - Step-down buffer sizes replaced with explicit parameter values
+ *   - Use --gtest_filter to select specific configurations
+ *   - Note: In zsh/bash, quote the filter pattern to prevent shell glob expansion
+ */
+TEST_P(Crc64CombineTest, DISABLED_BenchmarkCrc64) {
+    auto params = GetParam();
 
-    // Note: The original C version had a 'loop' variable for infinite benchmarking.
-    // In GoogleTest, use --gtest_repeat=-1 to run tests infinitely instead.
+    /* Allocate and initialize test data */
+    unsigned char *data = nullptr;
+    uint64_t passes = 0;
+    if (params.buffer_size) {
+        data = static_cast<unsigned char *>(zmalloc(params.buffer_size));
+        genBenchmarkRandomData(reinterpret_cast<char *>(data), params.buffer_size);
+        /* We want to hash about 1 gig of data in total, looped, to get a good
+         * idea of our performance. */
+        passes = CalculatePasses(params.buffer_size);
+    }
 
-    // The original C version also had a do-while loop that stepped down test sizes.
-    // For simplicity, this GoogleTest version runs a single size. To test multiple
-    // sizes, modify crc64_test_size above or run the test multiple times.
+    crc64_init();
+    /* warm up the cache */
+    set_crc64_cutoffs(params.buffer_size + 1, params.buffer_size + 1);
+    uint64_t expect = crc64(0, data, params.buffer_size);
 
-    do {
-        unsigned char *data = nullptr;
-        uint64_t passes = 0;
-        if (crc64_test_size) {
-            data = static_cast<unsigned char *>(zmalloc(crc64_test_size));
-            genBenchmarkRandomData(reinterpret_cast<char *>(data), crc64_test_size);
-            /* We want to hash about 1 gig of data in total, looped, to get a good
-             * idea of our performance. */
-            passes = (UINT64_C(0x100000000) / crc64_test_size);
-            passes = passes >= 2 ? passes : 2;
-            passes = passes <= 1000 ? passes : 1000;
-        }
+    if (params.combine_mode) {
+        RunCombineBenchmarks(params.buffer_size, expect);
+    } else if (params.buffer_size) {
+        RunCrcBenchmarks(data, params.buffer_size, passes, expect);
+    }
 
-        crc64_init();
-        /* warm up the cache */
-        set_crc64_cutoffs(crc64_test_size + 1, crc64_test_size + 1);
-        uint64_t expect = crc64(0, data, crc64_test_size);
-
-        if (!combine && crc64_test_size) {
-            if (csv) printf("algorithm,buffer,performance,crc64_matches\n");
-
-            /* get the single-character version for single-byte Redis behavior */
-            set_crc64_cutoffs(0, crc64_test_size + 1);
-            EXPECT_EQ(bench_crc64(data, crc64_test_size, passes, expect, "crc_1byte", csv), 0);
-
-            set_crc64_cutoffs(crc64_test_size + 1, crc64_test_size + 1);
-            /* run with 8-byte "single" path, crcfaster */
-            EXPECT_EQ(bench_crc64(data, crc64_test_size, passes, expect, "crcspeed", csv), 0);
-
-            /* run with dual 8-byte paths */
-            set_crc64_cutoffs(1, crc64_test_size + 1);
-            EXPECT_EQ(bench_crc64(data, crc64_test_size, passes, expect, "crcdual", csv), 0);
-
-            /* run with tri 8-byte paths */
-            set_crc64_cutoffs(1, 1);
-            EXPECT_EQ(bench_crc64(data, crc64_test_size, passes, expect, "crctri", csv), 0);
-        }
-
-        uint64_t INIT_SIZE = UINT64_C(0xffffffffffffffff);
-        if (combine) {
-            long long init_start = _ustime();
-            crc64_combine(UINT64_C(0xdeadbeefdeadbeef), UINT64_C(0xfeebdaedfeebdaed), INIT_SIZE, BENCH_RPOLY, 64);
-            long long init_end = _ustime();
-
-            init_end -= init_start;
-            init_end *= 1000;
-            if (csv) {
-                printf("operation,size,nanoseconds\n");
-                printf("init_64,%" PRIu64 ",%" PRIu64 "\n", INIT_SIZE, static_cast<uint64_t>(init_end));
-            } else {
-                printf("init_64 size=%" PRIu64 " in %" PRIu64 " nsec\n", INIT_SIZE, static_cast<uint64_t>(init_end));
-            }
-            /* use the hash itself as the size (unpredictable) */
-            bench_combine("hash_as_size_combine", crc64_test_size, expect, csv);
-            /* let's do something big (predictable, so fast) */
-            bench_combine("largest_combine", INIT_SIZE, expect, csv);
-            bench_combine("combine", crc64_test_size, expect, csv);
-        }
-
-        /* Be free memory region, be free. */
-        if (data) zfree(data);
-
-        /* step down by ~1.641 for a range of test sizes */
-        crc64_test_size -= (crc64_test_size >> 2) + (crc64_test_size >> 3) + (crc64_test_size >> 6);
-    } while (crc64_test_size > 3);
+    /* Be free memory region, be free. */
+    if (data) zfree(data);
 }
+
+/* Define test parameters for different benchmark configurations */
+INSTANTIATE_TEST_SUITE_P(
+    BufferSizes,
+    Crc64CombineTest,
+    ::testing::Values(
+        BenchmarkParams{1024, false, false},
+        BenchmarkParams{4096, false, false},
+        BenchmarkParams{16384, false, false},
+        BenchmarkParams{65536, false, false},
+        BenchmarkParams{16384, true, false}, // CSV output
+        BenchmarkParams{16384, false, true}  // Combine mode
+        ),
+    [](const ::testing::TestParamInfo<BenchmarkParams> &info) { return info.param.ToString(); });

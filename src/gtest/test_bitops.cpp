@@ -80,9 +80,9 @@ class BitopsTest : public ::testing::Test {
 };
 
 TEST_F(BitopsTest, TestPopcount) {
-#define TEST_CASE(MSG, SIZE)                                 \
-    if (test_case("Test failed: " MSG, SIZE)) {              \
-        FAIL() << "Test failed: " MSG;                       \
+#define TEST_CASE(MSG, SIZE)                    \
+    if (test_case("Test failed: " MSG, SIZE)) { \
+        FAIL() << "Test failed: " MSG;          \
     }
 
     /* The AVX2 version divides the array into the following 3 parts.

@@ -52,10 +52,6 @@ static mock_entry *mock_entries[10000];
 static int mock_entry_count = 0;
 
 /* --------- volatileEntryType Callbacks --------- */
-static sds mock_entry_get_key(const void *entry) {
-    return reinterpret_cast<sds>(const_cast<void *>(entry));
-}
-
 static long long mock_entry_get_expiry(const void *entry) {
     return mockGetExpiry(entry);
 }
@@ -156,7 +152,7 @@ static int free_mock_entries(void) {
 }
 
 class VsetTest : public ::testing::Test {
-protected:
+  protected:
     static void SetUpTestSuite() {
         allocatorDefragInit();
     }
@@ -395,7 +391,7 @@ TEST_F(VsetTest, TestVsetRemoveExpireShrink) {
 
     EXPECT_FALSE(vsetIsEmpty(&set));
 
-    EXPECT_EQ(vsetRemoveExpired(&set, mockGetExpiry, mock_entry_expire, now, mock_entry_count, &now), 1);
+    EXPECT_EQ(vsetRemoveExpired(&set, mockGetExpiry, mock_entry_expire, now, mock_entry_count, &now), 1u);
 
     EXPECT_TRUE(vsetIsEmpty(&set));
 
@@ -409,22 +405,22 @@ TEST_F(VsetTest, TestVsetDefrag) {
     vsetInit(&set);
 
     /* defrag empty set */
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0);
+    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     /* defrag when single entry */
     insert_mock_entry(&set);
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0);
+    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     /* defrag when vector */
     for (int i = 0; i < 127 - 1; i++)
         insert_mock_entry(&set);
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0);
+    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     long long expiry = rand() % 10000 + 100;
     for (int i = 0; i < 127 * 2; i++) {
         insert_mock_entry_with_expiry(&set, expiry);
     }
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0);
+    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     size_t cursor = 0;
     for (int i = 0; i < 100000; i++) {
@@ -432,7 +428,7 @@ TEST_F(VsetTest, TestVsetDefrag) {
             cursor = defrag_vset(&set, cursor, 100);
         insert_mock_entry_with_expiry(&set, expiry);
     }
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0);
+    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     vsetRelease(&set);
 }
@@ -457,7 +453,7 @@ TEST_F(VsetTest, TestVsetFuzzer) {
             remove_mock_entry(&set);
             break;
         case 4:
-            EXPECT_EQ(defrag_vset(&set, 0, 0), 0);
+            EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
             break;
         }
 

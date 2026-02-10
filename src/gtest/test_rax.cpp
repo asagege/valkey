@@ -36,16 +36,16 @@
 
 #include "generated_wrappers.hpp"
 
-#include <cstdio>
+#include <cerrno>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <sys/time.h>
-#include <cerrno>
 
 extern "C" {
-#include "rax.h"
 #include "mt19937-64.c"
+#include "rax.h"
 #include "util.h"
 
 extern bool accurate;
@@ -471,7 +471,7 @@ int iteratorFuzzTest(int keymode, size_t count) {
     uint32_t keylen = int2key(reinterpret_cast<char *>(key), sizeof(key), genrand64_int64() % (count ? count : 1), keymode);
     raxIterator iter;
     raxStart(&iter, rax_tree);
-    char *seekops[] = {const_cast<char *>("=="), const_cast<char *>(">="), const_cast<char *>("<="), 
+    char *seekops[] = {const_cast<char *>("=="), const_cast<char *>(">="), const_cast<char *>("<="),
                        const_cast<char *>(">"), const_cast<char *>("<"), const_cast<char *>("^"), const_cast<char *>("$")};
     char *seekop = seekops[genrand64_int64() % 7];
     raxSeek(&iter, seekop, key, keylen);
@@ -522,7 +522,7 @@ int iteratorFuzzTest(int keymode, size_t count) {
                 printf("BUG SEEKING: %s %.*s\n", seekop, keylen, key);
                 printf("%.*s (iter) VS %.*s (array) next=%d idx=%d "
                        "count=%lu keymode=%d\n",
-                       static_cast<int>(iter.key_len), reinterpret_cast<char *>(iter.key), 
+                       static_cast<int>(iter.key_len), reinterpret_cast<char *>(iter.key),
                        static_cast<int>(array_key_len), reinterpret_cast<char *>(array_key), next, seekidx,
                        static_cast<unsigned long>(count), keymode);
                 if (count < 500) {
@@ -547,7 +547,7 @@ int iteratorFuzzTest(int keymode, size_t count) {
 
 /* Test fixture */
 class RaxTest : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {
         /* Seed random generator for tests that need it */
         for (int x = 0; x < 10000; x++) genrand64_int64();
@@ -559,15 +559,15 @@ TEST_F(RaxTest, raxRandomWalk) {
     size_t used_memory_before = zmalloc_used_memory();
 
     rax *t = raxNew();
-    char *toadd[] = {const_cast<char *>("alligator"), const_cast<char *>("alien"), const_cast<char *>("byword"), 
-                     const_cast<char *>("chromodynamic"), const_cast<char *>("romane"), const_cast<char *>("romanus"), 
-                     const_cast<char *>("romulus"), const_cast<char *>("rubens"), const_cast<char *>("ruber"), 
-                     const_cast<char *>("rubicon"), const_cast<char *>("rubicundus"), const_cast<char *>("all"), 
+    char *toadd[] = {const_cast<char *>("alligator"), const_cast<char *>("alien"), const_cast<char *>("byword"),
+                     const_cast<char *>("chromodynamic"), const_cast<char *>("romane"), const_cast<char *>("romanus"),
+                     const_cast<char *>("romulus"), const_cast<char *>("rubens"), const_cast<char *>("ruber"),
+                     const_cast<char *>("rubicon"), const_cast<char *>("rubicundus"), const_cast<char *>("all"),
                      const_cast<char *>("rub"), const_cast<char *>("by"), nullptr};
 
     long numele;
     for (numele = 0; toadd[numele] != nullptr; numele++) {
-        raxInsert(t, reinterpret_cast<unsigned char *>(toadd[numele]), strlen(toadd[numele]), 
+        raxInsert(t, reinterpret_cast<unsigned char *>(toadd[numele]), strlen(toadd[numele]),
                   reinterpret_cast<void *>(numele), nullptr);
         EXPECT_EQ(raxAllocSize(t) + used_memory_before, zmalloc_used_memory());
     }
@@ -599,17 +599,17 @@ TEST_F(RaxTest, raxIteratorUnitTests) {
     size_t used_memory_before = zmalloc_used_memory();
 
     rax *t = raxNew();
-    char *toadd[] = {const_cast<char *>("alligator"), const_cast<char *>("alien"), const_cast<char *>("byword"), 
-                     const_cast<char *>("chromodynamic"), const_cast<char *>("romane"), const_cast<char *>("romanus"), 
-                     const_cast<char *>("romulus"), const_cast<char *>("rubens"), const_cast<char *>("ruber"), 
-                     const_cast<char *>("rubicon"), const_cast<char *>("rubicundus"), const_cast<char *>("all"), 
+    char *toadd[] = {const_cast<char *>("alligator"), const_cast<char *>("alien"), const_cast<char *>("byword"),
+                     const_cast<char *>("chromodynamic"), const_cast<char *>("romane"), const_cast<char *>("romanus"),
+                     const_cast<char *>("romulus"), const_cast<char *>("rubens"), const_cast<char *>("ruber"),
+                     const_cast<char *>("rubicon"), const_cast<char *>("rubicundus"), const_cast<char *>("all"),
                      const_cast<char *>("rub"), const_cast<char *>("by"), nullptr};
 
     long items = 0;
     while (toadd[items] != nullptr) items++;
 
     for (long i = 0; i < items; i++) {
-        raxInsert(t, reinterpret_cast<unsigned char *>(toadd[i]), strlen(toadd[i]), 
+        raxInsert(t, reinterpret_cast<unsigned char *>(toadd[i]), strlen(toadd[i]),
                   reinterpret_cast<void *>(i), nullptr);
         EXPECT_EQ(raxAllocSize(t) + used_memory_before, zmalloc_used_memory());
     }
@@ -647,9 +647,9 @@ TEST_F(RaxTest, raxIteratorUnitTests) {
         int retval = raxNext(&iter);
 
         if (tests[i].expected != nullptr) {
-            EXPECT_TRUE(strlen(tests[i].expected) == iter.key_len && 
-                       memcmp(tests[i].expected, iter.key, iter.key_len) == 0)
-                << "Iterator unit test error: test " << i << ", " << tests[i].expected 
+            EXPECT_TRUE(strlen(tests[i].expected) == iter.key_len &&
+                        memcmp(tests[i].expected, iter.key, iter.key_len) == 0)
+                << "Iterator unit test error: test " << i << ", " << tests[i].expected
                 << " expected, " << std::string(reinterpret_cast<char *>(iter.key), iter.key_len) << " reported";
         } else {
             EXPECT_EQ(retval, 0) << "Iterator unit test error: EOF expected in test " << i;
@@ -683,7 +683,7 @@ TEST_F(RaxTest, raxTryInsertUnitTests) {
 /* Regression test #1: Iterator wrong element returned after seek. */
 TEST_F(RaxTest, raxRegressionTest1) {
     rax *rax_tree = raxNew();
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("LKE")), 3, reinterpret_cast<void *>(static_cast<long>(1)), nullptr);
+    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("LIKE")), 4, reinterpret_cast<void *>(static_cast<long>(1)), nullptr);
     raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("TQ")), 2, reinterpret_cast<void *>(static_cast<long>(2)), nullptr);
     raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("B")), 1, reinterpret_cast<void *>(static_cast<long>(3)), nullptr);
     raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("FY")), 2, reinterpret_cast<void *>(static_cast<long>(4)), nullptr);
@@ -694,7 +694,7 @@ TEST_F(RaxTest, raxRegressionTest1) {
     raxSeek(&iter, ">", reinterpret_cast<unsigned char *>(const_cast<char *>("FMP")), 3);
     if (raxNext(&iter)) {
         EXPECT_TRUE(iter.key_len == 2 && memcmp(iter.key, "FY", 2) == 0)
-            << "Regression test 1 failed: 'FY' expected, got: '" 
+            << "Regression test 1 failed: 'FY' expected, got: '"
             << std::string(reinterpret_cast<char *>(iter.key), iter.key_len) << "'";
     }
 
@@ -821,8 +821,8 @@ TEST_F(RaxTest, DISABLED_raxBenchmark) {
             char buf[64];
             int len = int2key(buf, sizeof(buf), i, mode);
             void *data;
-            EXPECT_TRUE(raxFind(t, reinterpret_cast<unsigned char *>(buf), len, &data) && 
-                       data == reinterpret_cast<void *>(static_cast<long>(i)))
+            EXPECT_TRUE(raxFind(t, reinterpret_cast<unsigned char *>(buf), len, &data) &&
+                        data == reinterpret_cast<void *>(static_cast<long>(i)))
                 << "Issue with " << buf << ": " << data << " instead of " << reinterpret_cast<void *>(static_cast<long>(i));
         }
         printf("Linear lookup: %f\n", static_cast<double>(ustime() - start) / 1000000);
@@ -833,8 +833,8 @@ TEST_F(RaxTest, DISABLED_raxBenchmark) {
             int r = genrand64_int64() % 5000000;
             int len = int2key(buf, sizeof(buf), r, mode);
             void *data;
-            EXPECT_TRUE(raxFind(t, reinterpret_cast<unsigned char *>(buf), len, &data) && 
-                       data == reinterpret_cast<void *>(static_cast<long>(r)))
+            EXPECT_TRUE(raxFind(t, reinterpret_cast<unsigned char *>(buf), len, &data) &&
+                        data == reinterpret_cast<void *>(static_cast<long>(r)))
                 << "Issue with " << buf << ": " << data << " instead of " << reinterpret_cast<void *>(static_cast<long>(r));
         }
         printf("Random lookup: %f\n", static_cast<double>(ustime() - start) / 1000000);
@@ -911,7 +911,7 @@ TEST_F(RaxTest, DISABLED_raxHugeKey) {
     int found2 = raxFind(rax_tree, key, max_keylen, &value2);
     zfree(key);
     EXPECT_TRUE(found1 && found2) << "Huge key test failed on elementhood";
-    EXPECT_TRUE(value1 == reinterpret_cast<void *>(5678L) && value2 == reinterpret_cast<void *>(1234L)) 
+    EXPECT_TRUE(value1 == reinterpret_cast<void *>(5678L) && value2 == reinterpret_cast<void *>(1234L))
         << "Huge key test failed";
     raxFree(rax_tree);
 }

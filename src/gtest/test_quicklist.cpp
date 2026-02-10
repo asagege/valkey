@@ -6,17 +6,17 @@
 
 #include "generated_wrappers.hpp"
 
-#include <cstdio>
 #include <climits>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <sys/time.h>
-#include <cstdlib>
 
 extern "C" {
 #include "fmacros.h"
-#include "zmalloc.h"
 #include "listpack.h"
 #include "quicklist.h"
+#include "zmalloc.h"
 
 extern bool accurate;
 extern bool large_memory;
@@ -114,7 +114,7 @@ static int _itrprintr(quicklist *ql, int print, int forward) {
         if (print) {
             int size = (entry.sz > (1 << 20)) ? 1 << 20 : entry.sz;
             printf("[%3d (%2d)]: [%.*s] (%lld)\n", i, p, size,
-                            reinterpret_cast<char *>(entry.value), entry.longval);
+                   reinterpret_cast<char *>(entry.value), entry.longval);
         }
         i++;
     }
@@ -146,20 +146,20 @@ static int _ql_verify_compress(quicklist *ql) {
             if (node && (at < low_raw || at >= high_raw)) {
                 if (node->encoding != QUICKLIST_NODE_ENCODING_RAW) {
                     printf("Incorrect compression: node %d is "
-                                    "compressed at depth %d ((%u, %u); total "
-                                    "nodes: %lu; size: %zu; recompress: %d)",
-                                    at, ql->compress, low_raw, high_raw, ql->len, node->sz,
-                                    node->recompress);
+                           "compressed at depth %d ((%u, %u); total "
+                           "nodes: %lu; size: %zu; recompress: %d)",
+                           at, ql->compress, low_raw, high_raw, ql->len, node->sz,
+                           node->recompress);
                     errors++;
                 }
             } else {
                 if (node->encoding != QUICKLIST_NODE_ENCODING_LZF &&
                     !node->attempted_compress) {
                     printf("Incorrect non-compression: node %d is NOT "
-                                    "compressed at depth %d ((%u, %u); total "
-                                    "nodes: %lu; size: %zu; recompress: %d; attempted: %d)",
-                                    at, ql->compress, low_raw, high_raw, ql->len, node->sz,
-                                    node->recompress, node->attempted_compress);
+                           "compressed at depth %d ((%u, %u); total "
+                           "nodes: %lu; size: %zu; recompress: %d; attempted: %d)",
+                           at, ql->compress, low_raw, high_raw, ql->len, node->sz,
+                           node->recompress, node->attempted_compress);
                     errors++;
                 }
             }
@@ -186,16 +186,16 @@ static int _ql_verify(quicklist *ql, uint32_t len, uint32_t count, uint32_t head
     int loopr = itrprintr(ql, 0);
     if (loopr != static_cast<int>(ql->count)) {
         printf("quicklist cached count not match actual count: expected %lu, got "
-                        "%d",
-                        ql->count, loopr);
+               "%d",
+               ql->count, loopr);
         errors++;
     }
 
     int rloopr = itrprintr_rev(ql, 0);
     if (loopr != rloopr) {
         printf("quicklist has different forward count than reverse count!  "
-                        "Forward count is %d, reverse count is %d.",
-                        loopr, rloopr);
+               "Forward count is %d, reverse count is %d.",
+               loopr, rloopr);
         errors++;
     }
 
@@ -206,16 +206,16 @@ static int _ql_verify(quicklist *ql, uint32_t len, uint32_t count, uint32_t head
     if (ql->head && head_count != ql->head->count &&
         head_count != lpLength(ql->head->entry)) {
         printf("quicklist head count wrong: expected %d, "
-                        "got cached %d vs. actual %lu",
-                        head_count, ql->head->count, lpLength(ql->head->entry));
+               "got cached %d vs. actual %lu",
+               head_count, ql->head->count, lpLength(ql->head->entry));
         errors++;
     }
 
     if (ql->tail && tail_count != ql->tail->count &&
         tail_count != lpLength(ql->tail->entry)) {
         printf("quicklist tail count wrong: expected %d, "
-                        "got cached %u vs. actual %lu",
-                        tail_count, ql->tail->count, lpLength(ql->tail->entry));
+               "got cached %u vs. actual %lu",
+               tail_count, ql->tail->count, lpLength(ql->tail->entry));
         errors++;
     }
 
@@ -237,13 +237,12 @@ static void ql_release_iterator(quicklistIter *iter) {
  * Quicklist Unit Test
  *----------------------------------------------------------------------------*/
 class QuicklistTest : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {
         err = 0;
         for (int i = 0; i < 8; i++) {
             runtime[i] = 0;
         }
-
     }
 };
 

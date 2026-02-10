@@ -6,10 +6,10 @@
 
 #include "generated_wrappers.hpp"
 
-#include <cstdio>
 #include <climits>
-#include <cstring>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
 
 extern "C" {
 #include "server.h"
@@ -21,14 +21,14 @@ class ObjectTest : public ::testing::Test {
 TEST_F(ObjectTest, object_with_key) {
     sds key = sdsnew("foo");
     robj *val = createStringObject("bar", strlen("bar"));
-    EXPECT_EQ(val->encoding, OBJ_ENCODING_EMBSTR);
+    EXPECT_EQ(val->encoding, static_cast<unsigned>(OBJ_ENCODING_EMBSTR));
     EXPECT_EQ(sdslen(static_cast<sds>(objectGetVal(val))), 3u);
 
     /* Prevent objectSetKeyAndExpire from freeing the old val when reallocating it. */
     incrRefCount(val);
 
     robj *o = objectSetKeyAndExpire(val, key, -1);
-    EXPECT_EQ(o->encoding, OBJ_ENCODING_EMBSTR);
+    EXPECT_EQ(o->encoding, static_cast<unsigned>(OBJ_ENCODING_EMBSTR));
     EXPECT_NE(objectGetKey(o), nullptr);
 
     /* Check embedded key "foo" */
@@ -44,10 +44,10 @@ TEST_F(ObjectTest, object_with_key) {
 
     /* Either they're two separate objects, or one object with refcount == 2. */
     if (o == val) {
-        EXPECT_EQ(o->refcount, 2);
+        EXPECT_EQ(static_cast<unsigned>(o->refcount), 2u);
     } else {
-        EXPECT_EQ(o->refcount, 1);
-        EXPECT_EQ(val->refcount, 1);
+        EXPECT_EQ(static_cast<unsigned>(o->refcount), 1u);
+        EXPECT_EQ(static_cast<unsigned>(val->refcount), 1u);
     }
 
     /* Free them. */
@@ -70,7 +70,7 @@ TEST_F(ObjectTest, embedded_string_with_key) {
     EXPECT_EQ(strlen(short_value), 15u);
     robj *short_val_obj = createStringObject(short_value, strlen(short_value));
     robj *embstr_obj = objectSetKeyAndExpire(short_val_obj, key, -1);
-    EXPECT_EQ(embstr_obj->encoding, OBJ_ENCODING_EMBSTR);
+    EXPECT_EQ(embstr_obj->encoding, static_cast<unsigned>(OBJ_ENCODING_EMBSTR));
     EXPECT_EQ(sdslen(objectGetKey(embstr_obj)), 32u);
     EXPECT_EQ(sdscmp(objectGetKey(embstr_obj), key), 0);
     EXPECT_EQ(sdslen(static_cast<sds>(objectGetVal(embstr_obj))), 15u);
@@ -81,7 +81,7 @@ TEST_F(ObjectTest, embedded_string_with_key) {
     EXPECT_EQ(strlen(longer_value), 16u);
     robj *longer_val_obj = createStringObject(longer_value, strlen(longer_value));
     robj *raw_obj = objectSetKeyAndExpire(longer_val_obj, key, -1);
-    EXPECT_EQ(raw_obj->encoding, OBJ_ENCODING_RAW);
+    EXPECT_EQ(raw_obj->encoding, static_cast<unsigned>(OBJ_ENCODING_RAW));
     EXPECT_EQ(sdslen(objectGetKey(raw_obj)), 32u);
     EXPECT_EQ(sdscmp(objectGetKey(raw_obj), key), 0);
     EXPECT_EQ(sdslen(static_cast<sds>(objectGetVal(raw_obj))), 16u);
@@ -106,7 +106,7 @@ TEST_F(ObjectTest, embedded_string_with_key_and_expire) {
     EXPECT_EQ(strlen(short_value), 7u);
     robj *short_val_obj = createStringObject(short_value, strlen(short_value));
     robj *embstr_obj = objectSetKeyAndExpire(short_val_obj, key, 128);
-    EXPECT_EQ(embstr_obj->encoding, OBJ_ENCODING_EMBSTR);
+    EXPECT_EQ(embstr_obj->encoding, static_cast<unsigned>(OBJ_ENCODING_EMBSTR));
     EXPECT_EQ(sdslen(objectGetKey(embstr_obj)), 32u);
     EXPECT_EQ(sdscmp(objectGetKey(embstr_obj), key), 0);
     EXPECT_EQ(sdslen(static_cast<sds>(objectGetVal(embstr_obj))), 7u);
@@ -117,7 +117,7 @@ TEST_F(ObjectTest, embedded_string_with_key_and_expire) {
     EXPECT_EQ(strlen(longer_value), 8u);
     robj *longer_val_obj = createStringObject(longer_value, strlen(longer_value));
     robj *raw_obj = objectSetKeyAndExpire(longer_val_obj, key, 128);
-    EXPECT_EQ(raw_obj->encoding, OBJ_ENCODING_RAW);
+    EXPECT_EQ(raw_obj->encoding, static_cast<unsigned>(OBJ_ENCODING_RAW));
     EXPECT_EQ(sdslen(objectGetKey(raw_obj)), 32u);
     EXPECT_EQ(sdscmp(objectGetKey(raw_obj), key), 0);
     EXPECT_EQ(sdslen(static_cast<sds>(objectGetVal(raw_obj))), 8u);
@@ -134,7 +134,7 @@ TEST_F(ObjectTest, embedded_value) {
     const char *val = "v:12345678901234567890123456789012345678901234567890";
     EXPECT_EQ(strlen(val), 52u);
     robj *embstr_obj = createStringObject(val, strlen(val));
-    EXPECT_EQ(embstr_obj->encoding, OBJ_ENCODING_EMBSTR);
+    EXPECT_EQ(embstr_obj->encoding, static_cast<unsigned>(OBJ_ENCODING_EMBSTR));
     EXPECT_EQ(sdslen(static_cast<sds>(objectGetVal(embstr_obj))), 52u);
     EXPECT_EQ(strcmp(static_cast<const char *>(objectGetVal(embstr_obj)), val), 0);
 
@@ -148,7 +148,7 @@ TEST_F(ObjectTest, unembed_value) {
     long long expire = 155;
 
     robj *obj = objectSetKeyAndExpire(short_val_obj, key, expire);
-    EXPECT_EQ(obj->encoding, OBJ_ENCODING_EMBSTR);
+    EXPECT_EQ(obj->encoding, static_cast<unsigned>(OBJ_ENCODING_EMBSTR));
     EXPECT_EQ(strcmp(static_cast<const char *>(objectGetVal(obj)), short_value), 0);
     EXPECT_EQ(sdscmp(objectGetKey(obj), key), 0);
     EXPECT_EQ(objectGetExpire(obj), expire);
@@ -157,7 +157,7 @@ TEST_F(ObjectTest, unembed_value) {
     /* Unembed the value - it uses a separate allocation now.
      * the other embedded data gets shifted, so check them too */
     objectUnembedVal(obj);
-    EXPECT_EQ(obj->encoding, OBJ_ENCODING_RAW);
+    EXPECT_EQ(obj->encoding, static_cast<unsigned>(OBJ_ENCODING_RAW));
     EXPECT_EQ(strcmp(static_cast<const char *>(objectGetVal(obj)), short_value), 0);
     EXPECT_EQ(sdscmp(objectGetKey(obj), key), 0);
     EXPECT_EQ(objectGetExpire(obj), expire);

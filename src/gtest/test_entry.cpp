@@ -6,15 +6,15 @@
 
 #include "generated_wrappers.hpp"
 
-#include <cstdio>
 #include <climits>
-#include <cstring>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
 
 extern "C" {
-#include "fmacros.h"
 #include "entry.h"
 #include "expire.h"
+#include "fmacros.h"
 #include "monotonic.h"
 #include "server.h"
 }
@@ -26,7 +26,7 @@ extern "C" {
 #define LONG_VALUE "v:12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
 
 class EntryTest : public ::testing::Test {
-protected:
+  protected:
     /* Verify entry properties */
     void verify_entry_properties(entry *e, sds field, sds value_copy, long long expiry, bool has_expiry, bool has_valueptr) {
         EXPECT_EQ(sdscmp(entryGetField(e), field), 0);
@@ -189,7 +189,7 @@ TEST_F(EntryTest, entryUpdate) {
     verify_entry_properties(e11, field, value_copy11, expiry11, true, false);
     EXPECT_GE(entryMemUsage(e11), current_embedded_allocation_size * 3 / 4);
     EXPECT_LE(entryMemUsage(e11), current_embedded_allocation_size);
-    EXPECT_LE(entryMemUsage(e11), EMBED_VALUE_MAX_ALLOC_SIZE);
+    EXPECT_LE(entryMemUsage(e11), static_cast<size_t>(EMBED_VALUE_MAX_ALLOC_SIZE));
     EXPECT_EQ(e10, e11);
 
     // Update the value so that memory usage is exactly equal to the current allocation size
@@ -201,7 +201,7 @@ TEST_F(EntryTest, entryUpdate) {
     entry *e12 = entryUpdate(e11, value12, expiry12);
     verify_entry_properties(e11, field, value_copy12, expiry12, true, false);
     EXPECT_EQ(entryMemUsage(e12), current_embedded_allocation_size);
-    EXPECT_LE(entryMemUsage(e12), EMBED_VALUE_MAX_ALLOC_SIZE);
+    EXPECT_LE(entryMemUsage(e12), static_cast<size_t>(EMBED_VALUE_MAX_ALLOC_SIZE));
     EXPECT_EQ(e12, e11);
 
     entryFree(e12);

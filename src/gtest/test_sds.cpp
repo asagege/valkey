@@ -40,13 +40,13 @@ TEST_F(SdsTest, TestSds) {
     EXPECT_STREQ(x, "foo");
 
     sdsfree(x);
-    x = sdsnewlen("foo", 2);
+    x = sdsnewlen("foo", 3);
     /* Create a string with specified length */
-    EXPECT_STREQ(x, "fo");
+    EXPECT_STREQ(x, "foo");
 
     x = sdscat(x, "bar");
     /* Strings concatenation */
-    EXPECT_STREQ(x, "fobar");
+    EXPECT_STREQ(x, "foobar");
 
     x = sdscpy(x, "a");
     /* sdscpy() against an originally longer string */
@@ -64,7 +64,7 @@ TEST_F(SdsTest, TestSds) {
     sdsfree(x);
     x = sdscatprintf(sdsempty(), "a%cb", 0);
     /* sdscatprintf() seems working with \0 inside of result */
-    EXPECT_EQ(sdslen(x), 3);
+    EXPECT_EQ(sdslen(x), 3u);
     EXPECT_EQ(memcmp(x, "a\0b\0", 4), 0);
 
     sdsfree(x);
@@ -95,13 +95,13 @@ TEST_F(SdsTest, TestSds) {
     x = sdsnew(" x ");
     sdstrim(x, " x");
     /* sdstrim() works when all chars match */
-    EXPECT_EQ(sdslen(x), 0);
+    EXPECT_EQ(sdslen(x), 0u);
 
     sdsfree(x);
     x = sdsnew(" x ");
     sdstrim(x, " ");
     /* sdstrim() works when a single char remains */
-    EXPECT_EQ(sdslen(x), 1);
+    EXPECT_EQ(sdslen(x), 1u);
     EXPECT_EQ(x[0], 'x');
 
     sdsfree(x);
@@ -194,8 +194,8 @@ TEST_F(SdsTest, TestSds) {
     sdsfree(y);
     x = sdsnew("0");
     /* sdsnew() free/len buffers */
-    EXPECT_EQ(sdslen(x), 1);
-    EXPECT_EQ(sdsavail(x), 0);
+    EXPECT_EQ(sdslen(x), 1u);
+    EXPECT_EQ(sdsavail(x), 0u);
 
     /* Run the test a few times in order to hit the first two SDS header types. */
     for (i = 0; i < 10; i++) {
@@ -219,9 +219,9 @@ TEST_F(SdsTest, TestSds) {
     }
     /* sdsMakeRoomFor() content */
     EXPECT_STREQ(x, "0ABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGH"
-                     "IJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJ");
+                    "IJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJ");
     /* sdsMakeRoomFor() final length */
-    EXPECT_EQ(sdslen(x), 101);
+    EXPECT_EQ(sdslen(x), 101u);
 
     sdsfree(x);
 
@@ -258,55 +258,55 @@ TEST_F(SdsTest, TestSds) {
     /* sdsReszie() expand type */
     EXPECT_EQ(x[-1], SDS_TYPE_8);
     /* sdsReszie() expand len */
-    EXPECT_EQ(sdslen(x), 40);
+    EXPECT_EQ(sdslen(x), 40u);
     /* sdsReszie() expand strlen */
-    EXPECT_EQ(strlen(x), 40);
+    EXPECT_EQ(strlen(x), 40u);
     /* Different allocator allocates at least as large as requested size,
      * to confirm the allocator won't waste too much,
      * we add a largest size checker here. */
     /* sdsReszie() expand alloc */
-    EXPECT_GE(sdsalloc(x), 200);
-    EXPECT_LT(sdsalloc(x), 400);
+    EXPECT_GE(sdsalloc(x), 200u);
+    EXPECT_LT(sdsalloc(x), 400u);
     /* Test sdsResize - trim free space */
     x = sdsResize(x, 80, 1);
     /* sdsReszie() shrink type */
     EXPECT_EQ(x[-1], SDS_TYPE_8);
     /* sdsReszie() shrink len */
-    EXPECT_EQ(sdslen(x), 40);
+    EXPECT_EQ(sdslen(x), 40u);
     /* sdsReszie() shrink strlen */
-    EXPECT_EQ(strlen(x), 40);
+    EXPECT_EQ(strlen(x), 40u);
     /* sdsReszie() shrink alloc */
-    EXPECT_GE(sdsalloc(x), 80);
+    EXPECT_GE(sdsalloc(x), 80u);
     /* Test sdsResize - crop used space */
     x = sdsResize(x, 30, 1);
     /* sdsReszie() crop type */
     EXPECT_EQ(x[-1], SDS_TYPE_8);
     /* sdsReszie() crop len */
-    EXPECT_EQ(sdslen(x), 30);
+    EXPECT_EQ(sdslen(x), 30u);
     /* sdsReszie() crop strlen */
-    EXPECT_EQ(strlen(x), 30);
+    EXPECT_EQ(strlen(x), 30u);
     /* sdsReszie() crop alloc */
-    EXPECT_GE(sdsalloc(x), 30);
+    EXPECT_GE(sdsalloc(x), 30u);
     /* Test sdsResize - extend to different class */
     x = sdsResize(x, 400, 1);
     /* sdsReszie() expand type */
     EXPECT_EQ(x[-1], SDS_TYPE_16);
     /* sdsReszie() expand len */
-    EXPECT_EQ(sdslen(x), 30);
+    EXPECT_EQ(sdslen(x), 30u);
     /* sdsReszie() expand strlen */
-    EXPECT_EQ(strlen(x), 30);
+    EXPECT_EQ(strlen(x), 30u);
     /* sdsReszie() expand alloc */
-    EXPECT_GE(sdsalloc(x), 400);
+    EXPECT_GE(sdsalloc(x), 400u);
     /* Test sdsResize - shrink to different class */
     x = sdsResize(x, 4, 1);
     /* sdsReszie() crop type */
     EXPECT_EQ(x[-1], SDS_TYPE_8);
     /* sdsReszie() crop len */
-    EXPECT_EQ(sdslen(x), 4);
+    EXPECT_EQ(sdslen(x), 4u);
     /* sdsReszie() crop strlen */
-    EXPECT_EQ(strlen(x), 4);
+    EXPECT_EQ(strlen(x), 4u);
     /* sdsReszie() crop alloc */
-    EXPECT_GE(sdsalloc(x), 4);
+    EXPECT_GE(sdsalloc(x), 4u);
     sdsfree(x);
 }
 

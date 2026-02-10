@@ -17,7 +17,7 @@ extern uint64_t _crc64(uint_fast64_t crc, const void *in_data, const uint64_t le
 }
 
 class Crc64Test : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {
         crc64_init();
     }

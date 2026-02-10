@@ -20,6 +20,14 @@ if (USE_TLS)
     endif ()
 endif ()
 
+# Propagate allocator defines so that C++ test code uses the same
+# malloc_usable_size variant (e.g. je_malloc_usable_size) as the C library.
+if (USE_JEMALLOC)
+    list(APPEND COMPILE_DEFINITIONS "USE_JEMALLOC")
+elseif (USE_TCMALLOC OR USE_TCMALLOC_MINIMAL)
+    list(APPEND COMPILE_DEFINITIONS "USE_TCMALLOC")
+endif ()
+
 # Fetch GoogleTest using FetchContent (modern approach)
 include(FetchContent)
 FetchContent_Declare(
