@@ -41,8 +41,43 @@ extern "C" {
 #define _Bool bool           /* Replace C _Bool with C++ bool */
 #define typename _typename   /* Avoid conflict with C++ 'typename' keyword */
 #define protected protected_ /* Avoid conflict with C++ 'protected' keyword */
+
 #include "ae.h"
+#include "allocator_defrag.h"
+#include "config.h"
+#include "connection.h"
+#include "crc64.h"
+#include "crccombine.h"
+#include "crcspeed.h"
+#include "dict.h"
+#include "endianconv.h"
+#include "entry.h"
+#include "expire.h"
+#include "fifo.h"
+#include "fmacros.h"
+#include "hashtable.h"
+#include "intset.h"
+#include "kvstore.h"
+#include "listpack.h"
+#include "monotonic.h"
+#include "mt19937-64.h"
+#include "mutexqueue.h"
+#include "quicklist.h"
+#include "rax.h"
+#include "sds.h"
+#include "sdsalloc.h"
 #include "server.h"
+#include "sha1.h"
+#include "sha256.h"
+#include "util.h"
+#include "valkey_strtod.h"
+#include "vector.h"
+#include "vset.h"
+#include "ziplist.h"
+#include "zipmap.h"
+#include "zmalloc.h"
+#include "bio.h"
+#include "call_reply.h"
 
 /**
  * The list of wrapper methods defined.  Each wrapper method must

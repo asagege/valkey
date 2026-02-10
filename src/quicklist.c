@@ -1688,3 +1688,24 @@ void quicklistBookmarksClear(quicklist *ql) {
     /* NOTE: We do not shrink (realloc) the quick list. main use case for this
      * function is just before releasing the allocation. */
 }
+
+/* Wrapper functions for gtest to access static internals */
+size_t gtest_quicklist_node_neg_fill_limit(int fill) {
+    return quicklistNodeNegFillLimit(fill);
+}
+
+quicklistNode *gtest_quicklistCreateNode(void) {
+    return quicklistCreateNode();
+}
+
+quicklistNode *gtest_quicklistCreateNodeWithValue(int container, void *value, size_t sz) {
+    return __quicklistCreateNode(container, value, sz);
+}
+
+int gtest_quicklistCompressNode(quicklistNode *node) {
+    return __quicklistCompressNode(node);
+}
+
+int gtest_quicklistDecompressNode(quicklistNode *node) {
+    return __quicklistDecompressNode(node);
+}

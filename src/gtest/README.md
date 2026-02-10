@@ -58,7 +58,7 @@ gtest unit tests that you can filter/play with:
 
    ```bash
    make valkey-unit-gtests
-   ./src/gtest/valkey-unit-gtests --gtest_filter=TEST_CLASS_NAME.*
+   ./src/gtest/valkey-unit-gtests --gtest_filter='TEST_CLASS_NAME.*'
    ```
 
 4. Running a subset of gtest unit tests in the test class, replace
@@ -67,7 +67,8 @@ gtest unit tests that you can filter/play with:
 
    ```bash
    make valkey-unit-gtests
-   ./src/gtest/valkey-unit-gtests --gtest_filter=<*TEST_CLASS_NAME.TEST_NAME_PREFIX>
+   ./src/gtest/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
+   ./src/gtest/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
    ```
 
 5. Building and running with CMake
@@ -77,4 +78,15 @@ gtest unit tests that you can filter/play with:
    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/valkey -DBUILD_UNIT_GTESTS=yes
    make valkey-unit-gtests
    ./bin/valkey-unit-gtests
+   ```
+
+6. Running disabled tests
+
+   GoogleTest allows tests to be disabled by prefixing the test name with `DISABLED_`. These tests are skipped during normal test runs.
+   Some tests are disabled by default because they take a long time to run (e.g., 1M iterations for performance benchmarks).
+   To run a specific disabled test explicitly:
+
+   ```bash
+   make valkey-unit-gtests
+   ./src/gtest/valkey-unit-gtests --gtest_filter=TEST_CLASS_NAME.DISABLED_TEST_NAME --gtest_also_run_disabled_tests
    ```

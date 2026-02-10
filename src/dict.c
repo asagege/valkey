@@ -1414,3 +1414,16 @@ void dictRehashingInfo(dict *d, unsigned long long *from_size, unsigned long lon
     *from_size = DICTHT_SIZE(d->ht_size_exp[0]);
     *to_size = DICTHT_SIZE(d->ht_size_exp[1]);
 }
+
+/* Wrapper functions for gtest to access static internals */
+unsigned int gtest_dict_get_force_resize_ratio(void) {
+    return dict_force_resize_ratio;
+}
+
+signed char gtest_dict_next_exp(unsigned long size) {
+    return dictNextExp(size);
+}
+
+long long gtest_time_in_milliseconds(void) {
+    return timeInMilliseconds();
+}
