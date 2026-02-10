@@ -1,20 +1,33 @@
-#include <stdio.h>
-#include "../fmacros.h"
-#include "../crc64.h"
+/*
+ * Copyright (c) Valkey Contributors
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
-#include "test_help.h"
+#include "generated_wrappers.hpp"
+
+#include <cstdint>
+#include <cstdio>
+
+extern "C" {
+#include "crc64.h"
+#include "fmacros.h"
 
 extern uint64_t _crc64(uint_fast64_t crc, const void *in_data, const uint64_t len);
+}
 
-int test_crc64(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-    crc64_init();
+class Crc64Test : public ::testing::Test {
+protected:
+    void SetUp() override {
+        crc64_init();
+    }
+};
 
+TEST_F(Crc64Test, TestCrc64) {
     unsigned char numbers[] = "123456789";
-    TEST_ASSERT_MESSAGE("[calcula]: CRC64 '123456789'", (uint64_t)_crc64(0, numbers, 9) == 16845390139448941002ull);
-    TEST_ASSERT_MESSAGE("[calcula]: CRC64 '123456789'", (uint64_t)crc64(0, numbers, 9) == 16845390139448941002ull);
+    /* [calcula]: CRC64 '123456789' */
+    EXPECT_EQ(static_cast<uint64_t>(_crc64(0, numbers, 9)), 16845390139448941002ull);
+    EXPECT_EQ(static_cast<uint64_t>(crc64(0, numbers, 9)), 16845390139448941002ull);
 
     unsigned char li[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
                          "do eiusmod tempor incididunt ut labore et dolore magna "
@@ -25,7 +38,7 @@ int test_crc64(int argc, char **argv, int flags) {
                          "occaecat cupidatat non proident, sunt in culpa qui officia "
                          "deserunt mollit anim id est laborum.";
 
-    TEST_ASSERT_MESSAGE("[calcula]: CRC64 TEXT'", (uint64_t)_crc64(0, li, sizeof(li)) == 14373597793578550195ull);
-    TEST_ASSERT_MESSAGE("[calcula]: CRC64 TEXT", (uint64_t)crc64(0, li, sizeof(li)) == 14373597793578550195ull);
-    return 0;
+    /* [calcula]: CRC64 TEXT */
+    EXPECT_EQ(static_cast<uint64_t>(_crc64(0, li, sizeof(li))), 14373597793578550195ull);
+    EXPECT_EQ(static_cast<uint64_t>(crc64(0, li, sizeof(li))), 14373597793578550195ull);
 }

@@ -350,3 +350,20 @@ intset *intsetDup(intset *is) {
     memcpy(copy, is, size);
     return copy;
 }
+
+/* Wrapper functions for gtest to access static internals */
+uint8_t gtest_intset_value_encoding(int64_t v) {
+    return _intsetValueEncoding(v);
+}
+
+int64_t gtest_intset_get_encoded(intset *is, int pos, uint8_t enc) {
+    return _intsetGetEncoded(is, pos, enc);
+}
+
+int64_t gtest_intset_get(intset *is, int pos) {
+    return _intsetGet(is, pos);
+}
+
+uint8_t gtest_intset_search(intset *is, int64_t value, uint32_t *pos) {
+    return intsetSearch(is, value, pos);
+}

@@ -1,13 +1,23 @@
-#include "../fmacros.h"
-#include "../entry.h"
-#include "test_help.h"
-#include "../expire.h"
-#include "../monotonic.h"
-#include "../server.h"
-#include <stdio.h>
-#include <limits.h>
-#include <string.h>
-#include <math.h>
+/*
+ * Copyright (c) Valkey Contributors
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+#include "generated_wrappers.hpp"
+
+#include <cstdio>
+#include <climits>
+#include <cstring>
+#include <cmath>
+
+extern "C" {
+#include "fmacros.h"
+#include "entry.h"
+#include "expire.h"
+#include "monotonic.h"
+#include "server.h"
+}
 
 /* Constants for test values */
 #define SHORT_FIELD "foo"
@@ -15,17 +25,19 @@
 #define LONG_FIELD "k:123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
 #define LONG_VALUE "v:12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
 
-/* Verify entry properties */
-static int verify_entry_properties(entry *e, sds field, sds value_copy, long long expiry, bool has_expiry, bool has_valueptr) {
-    TEST_ASSERT(sdscmp(entryGetField(e), field) == 0);
-    size_t len;
-    TEST_ASSERT(sdscmp(entryGetValue(e, &len), value_copy) == 0);
-    TEST_ASSERT(len == sdslen(value_copy));
-    TEST_ASSERT(entryGetExpiry(e) == expiry);
-    TEST_ASSERT(entryHasExpiry(e) == has_expiry);
-    TEST_ASSERT(entryHasEmbeddedValue(e) != has_valueptr);
-    return 0;
-}
+class EntryTest : public ::testing::Test {
+protected:
+    /* Verify entry properties */
+    void verify_entry_properties(entry *e, sds field, sds value_copy, long long expiry, bool has_expiry, bool has_valueptr) {
+        EXPECT_EQ(sdscmp(entryGetField(e), field), 0);
+        size_t len;
+        EXPECT_EQ(sdscmp(entryGetValue(e, &len), value_copy), 0);
+        EXPECT_EQ(len, sdslen(value_copy));
+        EXPECT_EQ(entryGetExpiry(e), expiry);
+        EXPECT_EQ(entryHasExpiry(e), has_expiry);
+        EXPECT_EQ(entryHasEmbeddedValue(e), !has_valueptr);
+    }
+};
 
 /**
  * Test entryCreate functunallity:
@@ -34,11 +46,7 @@ static int verify_entry_properties(entry *e, sds field, sds value_copy, long lon
  * 3. non-embedded with expiry
  * 4. non-embedded without expiry
  */
-int test_entryCreate(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(EntryTest, entryCreate) {
     // Test with embedded value with expiry
     sds field1 = sdsnew(SHORT_FIELD);
     sds value1 = sdsnew(SHORT_VALUE);
@@ -86,8 +94,6 @@ int test_entryCreate(int argc, char **argv, int flags) {
     sdsfree(value_copy2);
     sdsfree(value_copy3);
     sdsfree(value_copy4);
-
-    return 0;
 }
 
 /**
@@ -103,11 +109,7 @@ int test_entryCreate(int argc, char **argv, int flags) {
  * 9. Update entry to more than 3/4 allocation size
  * 8. Update entry to exactly 3/4 allocation size
  */
-int test_entryUpdate(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(EntryTest, entryUpdate) {
     // Create embedded entry
     sds value1 = sdsnew(SHORT_VALUE);
     sds field = sdsnew(SHORT_FIELD);
@@ -125,7 +127,7 @@ int test_entryUpdate(int argc, char **argv, int flags) {
 
     // Update only expiry (keeping embedded)
     long long expiry3 = 200;
-    entry *e3 = entryUpdate(e2, NULL, expiry3);
+    entry *e3 = entryUpdate(e2, nullptr, expiry3);
     verify_entry_properties(e3, field, value_copy2, expiry3, true, false);
 
     // Update both value and expiry (keeping embedded)
@@ -136,9 +138,9 @@ int test_entryUpdate(int argc, char **argv, int flags) {
     verify_entry_properties(e4, field, value_copy4, expiry4, true, false);
 
     // Update with no changes (should return same entry)
-    entry *e5 = entryUpdate(e4, NULL, expiry4);
+    entry *e5 = entryUpdate(e4, nullptr, expiry4);
     verify_entry_properties(e5, field, value_copy4, expiry4, true, false);
-    TEST_ASSERT(e5 == e4);
+    EXPECT_EQ(e5, e4);
 
     // Update to a value that's too large to be embedded
     sds value6 = sdsnew(LONG_VALUE);
@@ -149,7 +151,7 @@ int test_entryUpdate(int argc, char **argv, int flags) {
 
     // Update expiry of a non-embedded entry
     long long expiry7 = 400;
-    entry *e7 = entryUpdate(e6, NULL, expiry7);
+    entry *e7 = entryUpdate(e6, nullptr, expiry7);
     verify_entry_properties(e7, field, value_copy6, expiry7, true, true);
 
     // Update from non-embedded back to embedded value
@@ -174,8 +176,8 @@ int test_entryUpdate(int argc, char **argv, int flags) {
     long long expiry10 = expiry9;
     entry *e10 = entryUpdate(e9, value10, expiry10);
     verify_entry_properties(e10, field, value_copy10, expiry10, true, false);
-    TEST_ASSERT(entryMemUsage(e10) < current_embedded_allocation_size * 3 / 4);
-    TEST_ASSERT(e10 != e9);
+    EXPECT_LT(entryMemUsage(e10), current_embedded_allocation_size * 3 / 4);
+    EXPECT_NE(e10, e9);
 
     // Update the value so that memory usage is at least 3/4 of the current memory usage
     // Ensuring required_embedded_size > current_embedded_allocation_size * 3 / 4 without creating a new entry
@@ -185,11 +187,10 @@ int test_entryUpdate(int argc, char **argv, int flags) {
     long long expiry11 = expiry10;
     entry *e11 = entryUpdate(e10, value11, expiry11);
     verify_entry_properties(e11, field, value_copy11, expiry11, true, false);
-    TEST_ASSERT(entryMemUsage(e11) >= current_embedded_allocation_size * 3 / 4);
-    TEST_ASSERT(entryMemUsage(e11) <= current_embedded_allocation_size);
-    TEST_ASSERT(entryMemUsage(e11) <=
-                EMBED_VALUE_MAX_ALLOC_SIZE);
-    TEST_ASSERT(e10 == e11);
+    EXPECT_GE(entryMemUsage(e11), current_embedded_allocation_size * 3 / 4);
+    EXPECT_LE(entryMemUsage(e11), current_embedded_allocation_size);
+    EXPECT_LE(entryMemUsage(e11), EMBED_VALUE_MAX_ALLOC_SIZE);
+    EXPECT_EQ(e10, e11);
 
     // Update the value so that memory usage is exactly equal to the current allocation size
     // Ensuring required_embedded_size == current_embedded_allocation_size without creating a new entry
@@ -199,9 +200,9 @@ int test_entryUpdate(int argc, char **argv, int flags) {
     long long expiry12 = expiry11;
     entry *e12 = entryUpdate(e11, value12, expiry12);
     verify_entry_properties(e11, field, value_copy12, expiry12, true, false);
-    TEST_ASSERT(entryMemUsage(e12) == current_embedded_allocation_size);
-    TEST_ASSERT(entryMemUsage(e12) <= EMBED_VALUE_MAX_ALLOC_SIZE);
-    TEST_ASSERT(e12 == e11);
+    EXPECT_EQ(entryMemUsage(e12), current_embedded_allocation_size);
+    EXPECT_LE(entryMemUsage(e12), EMBED_VALUE_MAX_ALLOC_SIZE);
+    EXPECT_EQ(e12, e11);
 
     entryFree(e12);
     sdsfree(field);
@@ -214,8 +215,6 @@ int test_entryUpdate(int argc, char **argv, int flags) {
     sdsfree(value_copy10);
     sdsfree(value_copy11);
     sdsfree(value_copy12);
-
-    return 0;
 }
 
 /**
@@ -226,57 +225,51 @@ int test_entryUpdate(int argc, char **argv, int flags) {
  * 4. Test with non-embedded entry
  * 5. Set expiry on non-embedded entry
  */
-int test_entryHasexpiry_entrySetExpiry(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(EntryTest, entryHasexpiry_entrySetExpiry) {
     // No expiry
     sds field1 = sdsnew(SHORT_FIELD);
     sds value1 = sdsnew(SHORT_VALUE);
     entry *e1 = entryCreate(field1, value1, EXPIRY_NONE);
-    TEST_ASSERT(entryHasExpiry(e1) == false);
-    TEST_ASSERT(entryGetExpiry(e1) == EXPIRY_NONE);
+    EXPECT_FALSE(entryHasExpiry(e1));
+    EXPECT_EQ(entryGetExpiry(e1), EXPIRY_NONE);
 
     // Set expiry on entry without expiry
     long long expiry2 = 100;
     entry *e2 = entrySetExpiry(e1, expiry2);
-    TEST_ASSERT(entryHasExpiry(e2) == true);
-    TEST_ASSERT(entryGetExpiry(e2) == expiry2);
+    EXPECT_TRUE(entryHasExpiry(e2));
+    EXPECT_EQ(entryGetExpiry(e2), expiry2);
 
     // Update expiry on entry with expiry
     long long expiry3 = 200;
     entry *e3 = entrySetExpiry(e2, expiry3);
-    TEST_ASSERT(entryHasExpiry(e3) == true);
-    TEST_ASSERT(entryGetExpiry(e3) == expiry3);
-    TEST_ASSERT(e2 == e3); // Should be the same pointer when just updating expiry
+    EXPECT_TRUE(entryHasExpiry(e3));
+    EXPECT_EQ(entryGetExpiry(e3), expiry3);
+    EXPECT_EQ(e2, e3); // Should be the same pointer when just updating expiry
 
     // Test with non-embedded entry
     sds field4 = sdsnew(LONG_FIELD);
     sds value4 = sdsnew(LONG_VALUE);
     entry *e4 = entryCreate(field4, value4, EXPIRY_NONE);
-    TEST_ASSERT(entryHasExpiry(e4) == false);
-    TEST_ASSERT(entryHasEmbeddedValue(e4) == false);
+    EXPECT_FALSE(entryHasExpiry(e4));
+    EXPECT_FALSE(entryHasEmbeddedValue(e4));
 
     // Set expiry on entry without expiry
     long long expiry5 = 100;
     entry *e5 = entrySetExpiry(e4, expiry5);
-    TEST_ASSERT(entryHasExpiry(e5) == true);
-    TEST_ASSERT(entryGetExpiry(e5) == expiry5);
+    EXPECT_TRUE(entryHasExpiry(e5));
+    EXPECT_EQ(entryGetExpiry(e5), expiry5);
 
     // Update expiry on entry with expiry
     long long expiry6 = 200;
     entry *e6 = entrySetExpiry(e5, expiry6);
-    TEST_ASSERT(entryHasExpiry(e6) == true);
-    TEST_ASSERT(entryGetExpiry(e6) == expiry6);
-    TEST_ASSERT(e5 == e6); // Should be the same pointer when just updating expiry
+    EXPECT_TRUE(entryHasExpiry(e6));
+    EXPECT_EQ(entryGetExpiry(e6), expiry6);
+    EXPECT_EQ(e5, e6); // Should be the same pointer when just updating expiry
 
     entryFree(e3);
     entryFree(e6);
     sdsfree(field1);
     sdsfree(field4);
-
-    return 0;
 }
 
 /**
@@ -290,11 +283,7 @@ int test_entryHasexpiry_entrySetExpiry(int argc, char **argv, int flags) {
  * 7. Test with import mode and import source client and import expiry
  * 8. Test with import mode and import source client and import expiry and import expiry is in the past
  */
-int test_entryIsExpired(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(EntryTest, entryIsExpired) {
     // Setup server state
     enterExecutionUnit(1, ustime());
     long long current_time = commandTimeSnapshot();
@@ -303,31 +292,31 @@ int test_entryIsExpired(int argc, char **argv, int flags) {
     sds field1 = sdsnew(SHORT_FIELD);
     sds value1 = sdsnew(SHORT_VALUE);
     entry *e1 = entryCreate(field1, value1, EXPIRY_NONE);
-    TEST_ASSERT(entryGetExpiry(e1) == EXPIRY_NONE);
-    TEST_ASSERT(entryIsExpired(e1) == false);
+    EXPECT_EQ(entryGetExpiry(e1), EXPIRY_NONE);
+    EXPECT_FALSE(entryIsExpired(e1));
 
     // Future expiry
     sds field2 = sdsnew(SHORT_FIELD);
     sds value2 = sdsnew(SHORT_VALUE);
     long long future_time = current_time + 10000; // 10 seconds in future
     entry *e2 = entryCreate(field2, value2, future_time);
-    TEST_ASSERT(entryGetExpiry(e2) == future_time);
-    TEST_ASSERT(entryIsExpired(e2) == false);
+    EXPECT_EQ(entryGetExpiry(e2), future_time);
+    EXPECT_FALSE(entryIsExpired(e2));
 
     // Current time expiry
     sds field3 = sdsnew(SHORT_FIELD);
     sds value3 = sdsnew(SHORT_VALUE);
     entry *e3 = entryCreate(field3, value3, current_time);
-    TEST_ASSERT(entryGetExpiry(e3) == current_time);
-    TEST_ASSERT(entryIsExpired(e3) == false);
+    EXPECT_EQ(entryGetExpiry(e3), current_time);
+    EXPECT_FALSE(entryIsExpired(e3));
 
     // Test with past expiry
     sds field4 = sdsnew(SHORT_FIELD);
     sds value4 = sdsnew(SHORT_VALUE);
     long long past_time = current_time - 10000; // 10 seconds ago
     entry *e4 = entryCreate(field4, value4, past_time);
-    TEST_ASSERT(entryGetExpiry(e4) == past_time);
-    TEST_ASSERT(entryIsExpired(e4) == true);
+    EXPECT_EQ(entryGetExpiry(e4), past_time);
+    EXPECT_TRUE(entryIsExpired(e4));
 
     entryFree(e1);
     entryFree(e2);
@@ -338,7 +327,6 @@ int test_entryIsExpired(int argc, char **argv, int flags) {
     sdsfree(field3);
     sdsfree(field4);
     exitExecutionUnit();
-    return 0;
 }
 
 /**
@@ -359,11 +347,7 @@ int test_entryIsExpired(int argc, char **argv, int flags) {
  *      * To smaller value (should decrease memory usage)
  *      * To bigger value (should increase memory usage)
  */
-int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(EntryTest, entryMemUsage_entrySetExpiry_entryUpdate) {
     // Tests with embedded entry
     // Embedded entry without expiry
     sds field1 = sdsnew(SHORT_FIELD);
@@ -373,7 +357,7 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e1 = entryCreate(field1, value1, expiry1);
     size_t e1_entryMemUsage = entryMemUsage(e1);
     verify_entry_properties(e1, field1, value_copy1, expiry1, false, false);
-    TEST_ASSERT(e1_entryMemUsage > 0);
+    EXPECT_GT(e1_entryMemUsage, 0u);
 
     // Add expiry to embedded entry without expiry
     // This should increase memory usage by sizeof(long long) + 2 bytes
@@ -382,7 +366,7 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e2 = entrySetExpiry(e1, expiry2);
     size_t e2_entryMemUsage = entryMemUsage(e2);
     verify_entry_properties(e2, field1, value_copy1, expiry2, true, false);
-    TEST_ASSERT(zmalloc_usable_size((char *)e2 - sizeof(long long) - 3) == e2_entryMemUsage);
+    EXPECT_EQ(zmalloc_usable_size(reinterpret_cast<char *>(e2) - sizeof(long long) - 3), e2_entryMemUsage);
 
     // Update expiry on an entry that already has one
     // This should NOT change memory usage as we're just updating the expiry value (long long)
@@ -390,7 +374,7 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e3 = entrySetExpiry(e2, expiry3);
     size_t e3_entryMemUsage = entryMemUsage(e3);
     verify_entry_properties(e3, field1, value_copy1, expiry3, true, false);
-    TEST_ASSERT(e3_entryMemUsage == e2_entryMemUsage);
+    EXPECT_EQ(e3_entryMemUsage, e2_entryMemUsage);
 
     // Update to smaller value (keeping embedded)
     // Memory usage should decrease by the difference in value size (2 bytes)
@@ -399,7 +383,7 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e4 = entryUpdate(e3, value4, entryGetExpiry(e3));
     size_t e4_entryMemUsage = entryMemUsage(e4);
     verify_entry_properties(e4, field1, value_copy4, expiry3, true, false);
-    TEST_ASSERT(zmalloc_usable_size((char *)e4 - sizeof(long long) - 3) == e4_entryMemUsage);
+    EXPECT_EQ(zmalloc_usable_size(reinterpret_cast<char *>(e4) - sizeof(long long) - 3), e4_entryMemUsage);
 
     // Update to bigger value (keeping embedded)
     // Memory usage should increase by the difference in value size (1 byte)
@@ -408,7 +392,7 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e5 = entryUpdate(e4, value5, entryGetExpiry(e4));
     size_t e5_entryMemUsage = entryMemUsage(e5);
     verify_entry_properties(e5, field1, value_copy5, expiry3, true, false);
-    TEST_ASSERT(zmalloc_usable_size((char *)e5 - sizeof(long long) - 3) == e5_entryMemUsage);
+    EXPECT_EQ(zmalloc_usable_size(reinterpret_cast<char *>(e5) - sizeof(long long) - 3), e5_entryMemUsage);
 
     // Tests with non-embedded entry
     // Non-embedded entry without expiry
@@ -420,7 +404,7 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e6 = entryCreate(field6, value6, EXPIRY_NONE);
     size_t e6_entryMemUsage = entryMemUsage(e6);
     verify_entry_properties(e6, field6, value_copy6, expiry6, false, true);
-    TEST_ASSERT(e6_entryMemUsage > 0);
+    EXPECT_GT(e6_entryMemUsage, 0u);
 
     // Add expiry to non-embedded entry without expiry
     // For non-embedded entries this increases memory by exactly sizeof(long long)
@@ -428,8 +412,8 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e7 = entrySetExpiry(e6, expiry7);
     size_t e7_entryMemUsage = entryMemUsage(e7);
     verify_entry_properties(e7, field6, value_copy6, expiry7, true, true);
-    size_t expected_e7_entry_mem = zmalloc_usable_size((char *)e7 - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value6);
-    TEST_ASSERT(expected_e7_entry_mem == e7_entryMemUsage);
+    size_t expected_e7_entry_mem = zmalloc_usable_size(reinterpret_cast<char *>(e7) - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value6);
+    EXPECT_EQ(expected_e7_entry_mem, e7_entryMemUsage);
 
     // Update expiry on a non-embedded entry that already has one
     // This should not change memory usage as we're just updating the expiry value
@@ -437,7 +421,7 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e8 = entrySetExpiry(e7, expiry8);
     size_t e8_entryMemUsage = entryMemUsage(e8);
     verify_entry_properties(e8, field6, value_copy6, expiry8, true, true);
-    TEST_ASSERT(e8_entryMemUsage == e7_entryMemUsage);
+    EXPECT_EQ(e8_entryMemUsage, e7_entryMemUsage);
 
     // Update to smaller value (keeping non-embedded)
     // Memory usage should increase by at least the difference between LONG_VALUE and "x" (143)
@@ -446,8 +430,8 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     entry *e9 = entryUpdate(e8, value9, entryGetExpiry(e8));
     size_t e9_entryMemUsage = entryMemUsage(e9);
     verify_entry_properties(e9, field6, value_copy9, expiry8, true, true);
-    size_t expected_e9_entry_mem = zmalloc_usable_size((char *)e9 - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value9);
-    TEST_ASSERT(expected_e9_entry_mem == e9_entryMemUsage);
+    size_t expected_e9_entry_mem = zmalloc_usable_size(reinterpret_cast<char *>(e9) - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value9);
+    EXPECT_EQ(expected_e9_entry_mem, e9_entryMemUsage);
 
     // Update to bigger value (keeping non-embedded)
     // Memory usage increases by the difference in value size (1 byte)
@@ -455,8 +439,8 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     sds value_copy10 = sdsdup(value10);
     entry *e10 = entryUpdate(e9, value10, entryGetExpiry(e9));
     size_t e10_entryMemUsage = entryMemUsage(e10);
-    size_t expected_10_entry_mem = zmalloc_usable_size((char *)e10 - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value10);
-    TEST_ASSERT(expected_10_entry_mem == e10_entryMemUsage);
+    size_t expected_10_entry_mem = zmalloc_usable_size(reinterpret_cast<char *>(e10) - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value10);
+    EXPECT_EQ(expected_10_entry_mem, e10_entryMemUsage);
 
     entryFree(e5);
     entryFree(e10);
@@ -468,15 +452,9 @@ int test_entryMemUsage_entrySetExpiry_entryUpdate(int argc, char **argv, int fla
     sdsfree(value_copy6);
     sdsfree(value_copy9);
     sdsfree(value_copy10);
-
-    return 0;
 }
 
-int test_entryStringRef(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(EntryTest, entryStringRef) {
     sds field1 = sdsnew(SHORT_FIELD);
     sds value1 = sdsnew(SHORT_VALUE);
     sds value_copy1 = sdsdup(value1);
@@ -484,41 +462,40 @@ int test_entryStringRef(int argc, char **argv, int flags) {
     entry *e1 = entryCreate(field1, value1, expiry1);
     entry *e2 = entryUpdateAsStringRef(e1, value_copy1, sdslen(value_copy1), entryGetExpiry(e1));
     verify_entry_properties(e2, field1, value_copy1, expiry1, false, true);
-    TEST_ASSERT(entryHasStringRef(e2) == true);
+    EXPECT_TRUE(entryHasStringRef(e2));
 
     long long expiry2 = 100;
     entry *e3 = entryUpdateAsStringRef(e2, value_copy1, sdslen(value_copy1), expiry2);
-    TEST_ASSERT(e2 != e3);
+    EXPECT_NE(e2, e3);
     verify_entry_properties(e3, field1, value_copy1, expiry2, true, true);
-    TEST_ASSERT(entryHasStringRef(e3) == true);
+    EXPECT_TRUE(entryHasStringRef(e3));
 
     long long expiry3 = 200;
     entry *e4 = entryUpdateAsStringRef(e3, value_copy1, sdslen(value_copy1), expiry3);
-    TEST_ASSERT(e3 == e4);
+    EXPECT_EQ(e3, e4);
     verify_entry_properties(e4, field1, value_copy1, expiry3, true, true);
-    TEST_ASSERT(entryHasStringRef(e4) == true);
+    EXPECT_TRUE(entryHasStringRef(e4));
 
     sds value2 = sdsnew(SHORT_VALUE);
     sds value_copy2 = sdsdup(value2);
     entry *e5 = entryUpdate(e4, value2, expiry3);
     verify_entry_properties(e5, field1, value_copy2, expiry3, true, false);
-    TEST_ASSERT(entryHasStringRef(e5) == false);
+    EXPECT_FALSE(entryHasStringRef(e5));
 
     entry *e6 = entryUpdateAsStringRef(e5, value_copy1, sdslen(value_copy1), expiry2);
-    TEST_ASSERT(e5 != e6);
+    EXPECT_NE(e5, e6);
     verify_entry_properties(e6, field1, value_copy1, expiry2, true, true);
-    TEST_ASSERT(entryHasStringRef(e6) == true);
+    EXPECT_TRUE(entryHasStringRef(e6));
 
     sds value3 = sdsnew(LONG_VALUE);
     sds value_copy3 = sdsdup(value3);
     entry *e7 = entryUpdate(e6, value3, expiry1);
     verify_entry_properties(e7, field1, value_copy3, expiry1, false, true);
-    TEST_ASSERT(entryHasStringRef(e7) == false);
+    EXPECT_FALSE(entryHasStringRef(e7));
 
     entryFree(e7);
     sdsfree(value_copy1);
     sdsfree(value_copy2);
     sdsfree(value_copy3);
     sdsfree(field1);
-    return 0;
 }

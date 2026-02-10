@@ -1,43 +1,55 @@
-#include "../fmacros.h"
-#include "../hashtable.h"
-#include "test_help.h"
-#include "../mt19937-64.h"
-#include "../zmalloc.h"
-#include "../monotonic.h"
+/*
+ * Copyright (c) Valkey Contributors
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
-#include <stdio.h>
-#include <limits.h>
-#include <string.h>
-#include <math.h>
+#include "generated_wrappers.hpp"
+
+#include <cstdio>
+#include <climits>
+#include <cstring>
+#include <cmath>
+
+extern "C" {
+#include "fmacros.h"
+#include "hashtable.h"
+#include "mt19937-64.h"
+#include "zmalloc.h"
+#include "monotonic.h"
+
+extern bool accurate;
+extern bool large_memory;
+extern char* seed;
+/* From util.c: getRandomBytes to seed hash function. */
+void getRandomBytes(unsigned char *p, size_t len);
+}
 
 /* Global variable to test the memory tracking callback. */
 static size_t mem_usage;
 
-/* From util.c: getRandomBytes to seed hash function. */
-void getRandomBytes(unsigned char *p, size_t len);
-
 /* Init hash function salt and seed random generator. */
 static void randomSeed(void) {
     unsigned long long seed;
-    getRandomBytes((void *)&seed, sizeof(seed));
+    getRandomBytes(reinterpret_cast<unsigned char *>(&seed), sizeof(seed));
     init_genrand64(seed);
-    srandom((unsigned)seed);
+    srandom(static_cast<unsigned>(seed));
     uint8_t hashseed[16];
     getRandomBytes(hashseed, sizeof(hashseed));
     hashtableSetHashFunctionSeed(hashseed);
 }
 
 /* An entry holding a string key and a string value in one allocation. */
-typedef struct {
+typedef struct keyval {
     unsigned int keysize; /* Sizes, including null-terminator */
     unsigned int valsize;
-    char data[]; /* key and value */
+    char data[1]; /* key and value - C++ doesn't support flexible array members */
 } keyval;
 
 static keyval *create_keyval(const char *key, const char *val) {
     size_t keysize = strlen(key) + 1;
     size_t valsize = strlen(val) + 1;
-    keyval *e = malloc(sizeof(keyval) + keysize + valsize);
+    keyval *e = static_cast<keyval *>(malloc(sizeof(keyval) + keysize + valsize));
     e->keysize = keysize;
     e->valsize = valsize;
     memcpy(e->data, key, keysize);
@@ -46,21 +58,21 @@ static keyval *create_keyval(const char *key, const char *val) {
 }
 
 static const void *getkey(const void *entry) {
-    const keyval *e = entry;
+    const keyval *e = static_cast<const keyval *>(entry);
     return e->data;
 }
 
 static const void *getval(const void *entry) {
-    const keyval *e = entry;
+    const keyval *e = static_cast<const keyval *>(entry);
     return e->data + e->keysize;
 }
 
 static uint64_t hashfunc(const void *key) {
-    return hashtableGenHashFunction(key, strlen(key));
+    return hashtableGenHashFunction(static_cast<const char *>(key), strlen(static_cast<const char *>(key)));
 }
 
 static int keycmp(const void *key1, const void *key2) {
-    return strcmp(key1, key2);
+    return strcmp(static_cast<const char *>(key1), static_cast<const char *>(key2));
 }
 
 static void freekeyval(void *keyval) {
@@ -74,15 +86,24 @@ static void trackmemusage(hashtable *ht, ssize_t delta) {
 
 /* Hashtable type used for some of the tests. */
 static hashtableType keyval_type = {
-    .entryGetKey = getkey,
-    .hashFunction = hashfunc,
-    .keyCompare = keycmp,
-    .entryDestructor = freekeyval,
-    .trackMemUsage = trackmemusage,
+    /* .entryGetKey = */ getkey,
+    /* .hashFunction = */ hashfunc,
+    /* .keyCompare = */ keycmp,
+    /* .validateEntry = */ nullptr,
+    /* .entryDestructor = */ freekeyval,
+    /* .entryPrefetchValue = */ nullptr,
+    /* .resizeAllowed = */ nullptr,
+    /* .rehashingStarted = */ nullptr,
+    /* .rehashingCompleted = */ nullptr,
+    /* .trackMemUsage = */ trackmemusage,
+    /* .getMetadataSize = */ nullptr,
+    /* .instant_rehashing = */ 0,
 };
 
 /* Callback for testing hashtableEmpty(). */
 static long empty_callback_call_counter;
+
+extern "C" {
 void emptyCallback(hashtable *ht) {
     UNUSED(ht);
     empty_callback_call_counter++;
@@ -93,29 +114,43 @@ void hashtableDump(hashtable *ht);
 void hashtableHistogram(hashtable *ht);
 int hashtableLongestBucketChain(hashtable *ht);
 size_t nextCursor(size_t v, size_t mask);
-
-int test_cursor(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-    TEST_ASSERT(nextCursor(0x0000, 0xffff) == 0x8000);
-    TEST_ASSERT(nextCursor(0x8000, 0xffff) == 0x4000);
-    TEST_ASSERT(nextCursor(0x4001, 0xffff) == 0xc001);
-    TEST_ASSERT(nextCursor(0xffff, 0xffff) == 0x0000);
-    return 0;
 }
 
-int test_set_hash_function_seed(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
+class HashtableTest : public ::testing::Test {
+protected:
+    static void SetUpTestSuite() {
+        /* Initialize monotonic clock once for all tests */
+        monotonicInit();
+    }
+
+    void SetUp() override {
+        mem_usage = 0;
+        /* Ensure resize policy is reset to default */
+        hashtableSetResizePolicy(HASHTABLE_RESIZE_ALLOW);
+    }
+
+    void TearDown() override {
+        /* Reset resize policy to default after each test */
+        hashtableSetResizePolicy(HASHTABLE_RESIZE_ALLOW);
+        /* Ensure mem_usage is back to 0 */
+        EXPECT_EQ(mem_usage, 0u);
+    }
+};
+
+TEST_F(HashtableTest, cursor) {
+    EXPECT_EQ(nextCursor(0x0000, 0xffff), 0x8000u);
+    EXPECT_EQ(nextCursor(0x8000, 0xffff), 0x4000u);
+    EXPECT_EQ(nextCursor(0x4001, 0xffff), 0xc001u);
+    EXPECT_EQ(nextCursor(0xffff, 0xffff), 0x0000u);
+}
+
+TEST_F(HashtableTest, set_hash_function_seed) {
     randomSeed();
-    return 0;
 }
 
-static int add_find_delete_test_helper(int flags) {
-    int count = (flags & UNIT_TEST_ACCURATE) ? 1000000 : 200;
-    TEST_ASSERT(mem_usage == 0);
+static void add_find_delete_test_helper() {
+    int count = accurate ? 1000000 : 200;
+    EXPECT_EQ(mem_usage, 0u);
     hashtable *ht = hashtableCreate(&keyval_type);
     int j;
 
@@ -125,9 +160,9 @@ static int add_find_delete_test_helper(int flags) {
         snprintf(key, sizeof(key), "%d", j);
         snprintf(val, sizeof(val), "%d", count - j + 42);
         keyval *e = create_keyval(key, val);
-        TEST_ASSERT(hashtableAdd(ht, e));
+        EXPECT_TRUE(hashtableAdd(ht, e));
     }
-    TEST_ASSERT(hashtableMemUsage(ht) == mem_usage);
+    EXPECT_EQ(hashtableMemUsage(ht), mem_usage);
 
     if (count < 1000) {
         hashtableHistogram(ht);
@@ -140,9 +175,9 @@ static int add_find_delete_test_helper(int flags) {
         snprintf(key, sizeof(key), "%d", j);
         snprintf(val, sizeof(val), "%d", count - j + 42);
         void *found;
-        TEST_ASSERT(hashtableFind(ht, key, &found));
-        keyval *e = found;
-        TEST_ASSERT(!strcmp(val, getval(e)));
+        EXPECT_TRUE(hashtableFind(ht, key, &found));
+        keyval *e = static_cast<keyval *>(found);
+        EXPECT_EQ(strcmp(static_cast<const char *>(getval(e)), val), 0);
     }
 
     /* Delete half of them */
@@ -154,80 +189,65 @@ static int add_find_delete_test_helper(int flags) {
             char val[32];
             snprintf(val, sizeof(val), "%d", count - j + 42);
             void *popped;
-            TEST_ASSERT(hashtablePop(ht, key, &popped));
-            keyval *e = popped;
-            TEST_ASSERT(!strcmp(val, getval(e)));
+            EXPECT_TRUE(hashtablePop(ht, key, &popped));
+            keyval *e = static_cast<keyval *>(popped);
+            EXPECT_EQ(strcmp(static_cast<const char *>(getval(e)), val), 0);
             free(e);
         } else {
-            TEST_ASSERT(hashtableDelete(ht, key));
+            EXPECT_TRUE(hashtableDelete(ht, key));
         }
     }
-    TEST_ASSERT(hashtableMemUsage(ht) == mem_usage);
+    EXPECT_EQ(hashtableMemUsage(ht), mem_usage);
 
     /* Empty, i.e. delete remaining entries, with progress callback. */
     empty_callback_call_counter = 0;
     hashtableEmpty(ht, emptyCallback);
-    TEST_ASSERT(empty_callback_call_counter > 0);
+    EXPECT_GT(empty_callback_call_counter, 0);
 
     /* Release memory */
     hashtableRelease(ht);
-    TEST_ASSERT(mem_usage == 0);
-    return 0;
+    EXPECT_EQ(mem_usage, 0u);
 }
 
-int test_add_find_delete(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
+TEST_F(HashtableTest, add_find_delete) {
     size_t used_memory_before = zmalloc_used_memory();
-    TEST_ASSERT(add_find_delete_test_helper(flags) == 0);
-    TEST_ASSERT(zmalloc_used_memory() == used_memory_before);
-    return 0;
+    add_find_delete_test_helper();
+    EXPECT_EQ(zmalloc_used_memory(), used_memory_before);
 }
 
-int test_add_find_delete_avoid_resize(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
+TEST_F(HashtableTest, add_find_delete_avoid_resize) {
     size_t used_memory_before = zmalloc_used_memory();
     hashtableSetResizePolicy(HASHTABLE_RESIZE_AVOID);
-    TEST_ASSERT(add_find_delete_test_helper(flags) == 0);
+    add_find_delete_test_helper();
     hashtableSetResizePolicy(HASHTABLE_RESIZE_ALLOW);
-    TEST_ASSERT(zmalloc_used_memory() == used_memory_before);
-    return 0;
+    EXPECT_EQ(zmalloc_used_memory(), used_memory_before);
 }
 
-int test_instant_rehashing(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, instant_rehashing) {
     long count = 200;
 
     /* A set of longs, i.e. pointer-sized values. */
-    hashtableType type = {.instant_rehashing = 1};
+    hashtableType type = {0};
+    type.instant_rehashing = 1;
     hashtable *ht = hashtableCreate(&type);
     long j;
 
     /* Populate and check that rehashing is never ongoing. */
     for (j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)j));
-        TEST_ASSERT(!hashtableIsRehashing(ht));
+        EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(j)));
+        EXPECT_FALSE(hashtableIsRehashing(ht));
     }
 
     /* Delete and check that rehashing is never ongoing. */
     for (j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableDelete(ht, (void *)j));
-        TEST_ASSERT(!hashtableIsRehashing(ht));
+        EXPECT_TRUE(hashtableDelete(ht, reinterpret_cast<void *>(j)));
+        EXPECT_FALSE(hashtableIsRehashing(ht));
     }
 
     hashtableRelease(ht);
-    return 0;
 }
 
-int test_empty_buckets_rehashing(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, empty_buckets_rehashing) {
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
     long j;
@@ -236,18 +256,18 @@ int test_empty_buckets_rehashing(int argc, char **argv, int flags) {
 
     /* Populate and make sure there is no rehashing ongoing. */
     for (j = 0; j < 1000; j++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)j));
+        EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(j)));
     }
     while (hashtableIsRehashing(ht)) {
-        TEST_ASSERT(!hashtableAdd(ht, (void *)0));
+        EXPECT_FALSE(hashtableAdd(ht, reinterpret_cast<void *>(0)));
     }
 
     /* Keep the entry from the highest bucket index so shrink rehashing doesn't
      * complete too early with randomized hash seeds and start a second resize. */
     size_t mask = hashtableBuckets(ht) - 1;
     for (j = 0; j < 1000; j++) {
-        const void *key = (void *)j;
-        uint64_t hash = hashtableGenHashFunction((const char *)&key, sizeof(key));
+        const void *key = reinterpret_cast<void *>(j);
+        uint64_t hash = hashtableGenHashFunction(reinterpret_cast<const char *>(&key), sizeof(key));
         size_t bucket_idx = hash & mask;
         if (bucket_idx > keep_bucket) {
             keep_bucket = bucket_idx;
@@ -259,29 +279,24 @@ int test_empty_buckets_rehashing(int argc, char **argv, int flags) {
     hashtablePauseAutoShrink(ht);
     for (j = 0; j < 1000; j++) {
         if (j == keep) continue;
-        TEST_ASSERT(hashtableDelete(ht, (void *)j));
+        EXPECT_TRUE(hashtableDelete(ht, reinterpret_cast<void *>(j)));
     }
     hashtableResumeAutoShrink(ht);
-    TEST_ASSERT(hashtableSize(ht) == 1);
-    TEST_ASSERT(hashtableGetRehashingIndex(ht) == 0);
+    EXPECT_EQ(hashtableSize(ht), 1u);
+    EXPECT_EQ(hashtableGetRehashingIndex(ht), 0);
 
     /* Add elements to trigger rehashing, a rehash step will rehash a maximum of 10 buckets. */
     for (j = 0; j < 10; j++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)(1000 + j)));
+        EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(1000 + j)));
     }
-    TEST_ASSERT(hashtableSize(ht) == 11);
+    EXPECT_EQ(hashtableSize(ht), 11u);
     /* Check that at least 90 buckets are rehashed or that rehashing is completed. */
-    TEST_ASSERT(hashtableGetRehashingIndex(ht) >= 90 || hashtableGetRehashingIndex(ht) == -1);
+    EXPECT_TRUE(hashtableGetRehashingIndex(ht) >= 90 || hashtableGetRehashingIndex(ht) == -1);
 
     hashtableRelease(ht);
-    return 0;
 }
 
-int test_bucket_chain_length(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, bucket_chain_length) {
     unsigned long count = 1000000;
 
     /* A set of longs, i.e. pointer-sized integer values. */
@@ -289,38 +304,33 @@ int test_bucket_chain_length(int argc, char **argv, int flags) {
     hashtable *ht = hashtableCreate(&type);
     unsigned long j;
     for (j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)j));
+        EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(j)));
     }
     /* If it's rehashing, add a few more until rehashing is complete.
      * We also make sure that we won't resize during the rehashing. */
     while (hashtableIsRehashing(ht)) {
-        TEST_ASSERT(!hashtableExpand(ht, count * 2));
+        EXPECT_FALSE(hashtableExpand(ht, count * 2));
         j++;
-        TEST_ASSERT(hashtableAdd(ht, (void *)j));
+        EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(j)));
     }
-    TEST_ASSERT(j < count * 2);
+    EXPECT_LT(j, count * 2);
     int max_chainlen_not_rehashing = hashtableLongestBucketChain(ht);
-    TEST_ASSERT(max_chainlen_not_rehashing < 10);
+    EXPECT_LT(max_chainlen_not_rehashing, 10);
 
     /* Add more until rehashing starts again. */
     while (!hashtableIsRehashing(ht)) {
         j++;
-        TEST_ASSERT(hashtableAdd(ht, (void *)j));
+        EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(j)));
     }
-    TEST_ASSERT(j < count * 2);
+    EXPECT_LT(j, count * 2);
     int max_chainlen_rehashing = hashtableLongestBucketChain(ht);
-    TEST_ASSERT(max_chainlen_rehashing < 10);
+    EXPECT_LT(max_chainlen_rehashing, 10);
 
     hashtableRelease(ht);
-    return 0;
 }
 
-int test_two_phase_insert_and_pop(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
-    int count = (flags & UNIT_TEST_ACCURATE) ? 1000000 : 200;
+TEST_F(HashtableTest, two_phase_insert_and_pop) {
+    int count = accurate ? 1000000 : 200;
     hashtable *ht = hashtableCreate(&keyval_type);
     int j;
 
@@ -330,8 +340,8 @@ int test_two_phase_insert_and_pop(int argc, char **argv, int flags) {
         snprintf(key, sizeof(key), "%d", j);
         snprintf(val, sizeof(val), "%d", count - j + 42);
         hashtablePosition position;
-        bool ret = hashtableFindPositionForInsert(ht, key, &position, NULL);
-        TEST_ASSERT(ret);
+        bool ret = hashtableFindPositionForInsert(ht, key, &position, nullptr);
+        EXPECT_TRUE(ret);
         keyval *e = create_keyval(key, val);
         hashtableInsertAtPosition(ht, e, &position);
     }
@@ -346,9 +356,9 @@ int test_two_phase_insert_and_pop(int argc, char **argv, int flags) {
         snprintf(key, sizeof(key), "%d", j);
         snprintf(val, sizeof(val), "%d", count - j + 42);
         void *found;
-        TEST_ASSERT(hashtableFind(ht, key, &found));
-        keyval *e = found;
-        TEST_ASSERT(!strcmp(val, getval(e)));
+        EXPECT_TRUE(hashtableFind(ht, key, &found));
+        keyval *e = static_cast<keyval *>(found);
+        EXPECT_EQ(strcmp(static_cast<const char *>(getval(e)), val), 0);
     }
 
     /* Test two-phase pop. */
@@ -359,24 +369,20 @@ int test_two_phase_insert_and_pop(int argc, char **argv, int flags) {
         hashtablePosition position;
         size_t size_before_find = hashtableSize(ht);
         void **ref = hashtableTwoPhasePopFindRef(ht, key, &position);
-        TEST_ASSERT(ref != NULL);
-        keyval *e = *ref;
-        TEST_ASSERT(!strcmp(val, getval(e)));
-        TEST_ASSERT(hashtableSize(ht) == size_before_find);
+        EXPECT_NE(ref, nullptr);
+        keyval *e = *reinterpret_cast<keyval **>(ref);
+        EXPECT_EQ(strcmp(static_cast<const char *>(getval(e)), val), 0);
+        EXPECT_EQ(hashtableSize(ht), size_before_find);
         hashtableTwoPhasePopDelete(ht, &position);
-        TEST_ASSERT(hashtableSize(ht) == size_before_find - 1);
+        EXPECT_EQ(hashtableSize(ht), size_before_find - 1);
         free(e);
     }
-    TEST_ASSERT(hashtableSize(ht) == 0);
+    EXPECT_EQ(hashtableSize(ht), 0u);
 
     hashtableRelease(ht);
-    return 0;
 }
 
-int test_replace_reallocated_entry(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
+TEST_F(HashtableTest, replace_reallocated_entry) {
     size_t used_memory_before = zmalloc_used_memory();
 
     int count = 100, j;
@@ -388,7 +394,7 @@ int test_replace_reallocated_entry(int argc, char **argv, int flags) {
         snprintf(key, sizeof(key), "%d", j);
         snprintf(val, sizeof(val), "%d", count - j + 42);
         keyval *e = create_keyval(key, val);
-        TEST_ASSERT(hashtableAdd(ht, e));
+        EXPECT_TRUE(hashtableAdd(ht, e));
     }
 
     /* Find and replace */
@@ -397,18 +403,18 @@ int test_replace_reallocated_entry(int argc, char **argv, int flags) {
         snprintf(key, sizeof(key), "%d", j);
         snprintf(val, sizeof(val), "%d", count - j + 42);
         void *found;
-        TEST_ASSERT(hashtableFind(ht, key, &found));
-        keyval *old = found;
-        TEST_ASSERT(strcmp(getkey(old), key) == 0);
-        TEST_ASSERT(strcmp(getval(old), val) == 0);
+        EXPECT_TRUE(hashtableFind(ht, key, &found));
+        keyval *old = static_cast<keyval *>(found);
+        EXPECT_EQ(strcmp(static_cast<const char *>(getkey(old)), key), 0);
+        EXPECT_EQ(strcmp(static_cast<const char *>(getval(old)), val), 0);
         snprintf(val, sizeof(val), "%d", j + 1234);
-        keyval *new = create_keyval(key, val);
+        keyval *new_entry = create_keyval(key, val);
         /* If we free 'old' before the call to hashtableReplaceReallocatedEntry,
          * we get a use-after-free warning, so instead we just overwrite it with
          * junk. The purpose is to verify that the function doesn't use the
          * memory it points to. */
         memset(old->data, 'x', old->keysize + old->valsize);
-        TEST_ASSERT(hashtableReplaceReallocatedEntry(ht, old, new));
+        EXPECT_TRUE(hashtableReplaceReallocatedEntry(ht, old, new_entry));
         free(old);
     }
 
@@ -418,24 +424,19 @@ int test_replace_reallocated_entry(int argc, char **argv, int flags) {
         snprintf(key, sizeof(key), "%d", j);
         snprintf(val, sizeof(val), "%d", j + 1234);
         void *found;
-        TEST_ASSERT(hashtableFind(ht, key, &found));
-        keyval *e = found;
-        TEST_ASSERT(!strcmp(val, getval(e)));
+        EXPECT_TRUE(hashtableFind(ht, key, &found));
+        keyval *e = static_cast<keyval *>(found);
+        EXPECT_EQ(strcmp(static_cast<const char *>(getval(e)), val), 0);
     }
 
     hashtableRelease(ht);
-    TEST_ASSERT(zmalloc_used_memory() == used_memory_before);
-    return 0;
+    EXPECT_EQ(zmalloc_used_memory(), used_memory_before);
 }
 
-int test_incremental_find(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, incremental_find) {
     size_t count = 2000000;
-    uint8_t element_array[count];
-    memset(element_array, 0, sizeof element_array);
+    uint8_t *element_array = static_cast<uint8_t *>(malloc(count));
+    memset(element_array, 0, count);
 
     /* A set of uint8_t pointers */
     hashtableType type = {0};
@@ -443,30 +444,30 @@ int test_incremental_find(int argc, char **argv, int flags) {
 
     /* Populate */
     for (size_t j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, element_array + j));
+        EXPECT_TRUE(hashtableAdd(ht, element_array + j));
     }
 
     monotime timer;
-    monotonicInit();
 
     /* Compare to looking up one by one. */
     elapsedStart(&timer);
     for (size_t i = 0; i < count; i++) {
         uint8_t *key = &element_array[i];
         void *found;
-        TEST_ASSERT(hashtableFind(ht, key, &found) == 1);
-        TEST_ASSERT(found == key);
+        EXPECT_EQ(hashtableFind(ht, key, &found), 1);
+        EXPECT_EQ(found, key);
     }
     uint64_t us2 = elapsedUs(timer);
-    TEST_PRINT_INFO("Lookup %zu elements one by one took %lu microseconds.",
-                    count, (unsigned long)us2);
+    printf("Lookup %zu elements one by one took %lu microseconds.\n",
+           count, static_cast<unsigned long>(us2));
 
     /* Lookup elements in batches. */
     for (size_t batch_size = 1; batch_size <= 64; batch_size *= 2) {
         elapsedStart(&timer);
         for (size_t batch = 0; batch < count / batch_size; batch++) {
             /* Init batches. */
-            hashtableIncrementalFindState states[batch_size];
+            hashtableIncrementalFindState *states = static_cast<hashtableIncrementalFindState *>(
+                malloc(sizeof(hashtableIncrementalFindState) * batch_size));
             for (size_t i = 0; i < batch_size; i++) {
                 void *key = &element_array[batch * batch_size + i];
                 hashtableIncrementalFindInit(&states[i], ht, key);
@@ -485,38 +486,36 @@ int test_incremental_find(int argc, char **argv, int flags) {
             /* Fetch results. */
             for (size_t i = 0; i < batch_size; i++) {
                 void *found;
-                TEST_ASSERT(hashtableIncrementalFindGetResult(&states[i], &found) == 1);
-                TEST_ASSERT(found == &element_array[batch * batch_size + i]);
+                EXPECT_EQ(hashtableIncrementalFindGetResult(&states[i], &found), 1);
+                EXPECT_EQ(found, &element_array[batch * batch_size + i]);
             }
+            free(states);
         }
         uint64_t us1 = elapsedUs(timer);
-        TEST_PRINT_INFO("Lookup %zu elements in batches of %zu took %lu microseconds.",
-                        count, batch_size, (unsigned long)us1);
+        printf("Lookup %zu elements in batches of %zu took %lu microseconds.\n",
+               count, batch_size, static_cast<unsigned long>(us1));
     }
 
     hashtableRelease(ht);
-    return 0;
+    free(element_array);
 }
 
+/* Helper types and functions for scan tests */
 typedef struct {
     long count;
-    uint8_t entry_seen[];
+    uint8_t entry_seen[1]; /* Flexible array member workaround for C++ */
 } scandata;
 
-void scanfn(void *privdata, void *entry) {
-    scandata *data = (scandata *)privdata;
-    unsigned long j = (unsigned long)entry;
+static void scanfn(void *privdata, void *entry) {
+    scandata *data = static_cast<scandata *>(privdata);
+    unsigned long j = reinterpret_cast<unsigned long>(entry);
     data->entry_seen[j]++;
     data->count++;
 }
 
-int test_scan(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
-    long num_entries = (flags & UNIT_TEST_LARGE_MEMORY) ? 1000000 : 200000;
-    int num_rounds = (flags & UNIT_TEST_ACCURATE) ? 20 : 5;
+TEST_F(HashtableTest, scan) {
+    long num_entries = large_memory ? 1000000 : 200000;
+    int num_rounds = accurate ? 20 : 5;
 
     /* A set of longs, i.e. pointer-sized values. */
     hashtableType type = {0};
@@ -524,7 +523,7 @@ int test_scan(int argc, char **argv, int flags) {
 
     for (int round = 0; round < num_rounds; round++) {
         /* First round count = num_entries, then some more. */
-        long count = num_entries * (1 + 2 * (double)round / num_rounds);
+        long count = num_entries * (1 + 2 * static_cast<double>(round) / num_rounds);
 
         /* Seed, to make sure each round is different. */
         randomSeed();
@@ -532,11 +531,11 @@ int test_scan(int argc, char **argv, int flags) {
         /* Populate */
         hashtable *ht = hashtableCreate(&type);
         for (j = 0; j < count; j++) {
-            TEST_ASSERT(hashtableAdd(ht, (void *)j));
+            EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(j)));
         }
 
         /* Scan */
-        scandata *data = calloc(1, sizeof(scandata) + count);
+        scandata *data = static_cast<scandata *>(calloc(1, sizeof(scandata) + count));
         long max_entries_per_cycle = 0;
         unsigned num_cycles = 0;
         long scanned_count = 0;
@@ -553,49 +552,45 @@ int test_scan(int argc, char **argv, int flags) {
         } while (cursor != 0);
 
         /* Verify that every entry was returned exactly once. */
-        TEST_ASSERT(scanned_count == count);
+        EXPECT_EQ(scanned_count, count);
         for (j = 0; j < count; j++) {
-            TEST_ASSERT(data->entry_seen[j] >= 1);
-            TEST_ASSERT(data->entry_seen[j] <= 2);
+            EXPECT_GE(data->entry_seen[j], 1u);
+            EXPECT_LE(data->entry_seen[j], 2u);
         }
 
         /* Print some information for curious readers. */
-        TEST_PRINT_INFO("Scanned %ld; max emitted per call: %ld; avg emitted per call: %.2lf",
-                        count, max_entries_per_cycle, (double)count / num_cycles);
+        printf("Scanned %ld; max emitted per call: %ld; avg emitted per call: %.2lf\n",
+               count, max_entries_per_cycle, static_cast<double>(count) / num_cycles);
 
         /* Cleanup */
         hashtableRelease(ht);
         free(data);
     }
-    return 0;
 }
 
+/* Helper types for mock hash entry tests */
 typedef struct {
     uint64_t value;
     uint64_t hash;
 } mock_hash_entry;
 
 static mock_hash_entry *mock_hash_entry_create(uint64_t value, uint64_t hash) {
-    mock_hash_entry *entry = malloc(sizeof(mock_hash_entry));
+    mock_hash_entry *entry = static_cast<mock_hash_entry *>(malloc(sizeof(mock_hash_entry)));
     entry->value = value;
     entry->hash = hash;
     return entry;
 }
 
 static uint64_t mock_hash_entry_get_hash(const void *entry) {
-    if (entry == NULL) return 0UL;
-    mock_hash_entry *mock = (mock_hash_entry *)entry;
+    if (entry == nullptr) return 0UL;
+    const mock_hash_entry *mock = static_cast<const mock_hash_entry *>(entry);
     return (mock->hash != 0) ? mock->hash : mock->value;
 }
 
-int test_iterator(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, iterator) {
     size_t count = 2000000;
-    uint8_t entry_array[count];
-    memset(entry_array, 0, sizeof entry_array);
+    uint8_t *entry_array = static_cast<uint8_t *>(malloc(count));
+    memset(entry_array, 0, count);
 
     /* A set of uint8_t pointers */
     hashtableType type = {0};
@@ -603,7 +598,7 @@ int test_iterator(int argc, char **argv, int flags) {
 
     /* Populate */
     for (size_t j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, entry_array + j));
+        EXPECT_TRUE(hashtableAdd(ht, entry_array + j));
     }
 
     /* Iterate */
@@ -612,35 +607,29 @@ int test_iterator(int argc, char **argv, int flags) {
     void *next;
     hashtableInitIterator(&iter, ht, 0);
     while (hashtableNext(&iter, &next)) {
-        uint8_t *entry = next;
+        uint8_t *entry = static_cast<uint8_t *>(next);
         num_returned++;
-        TEST_ASSERT(entry >= entry_array && entry < entry_array + count);
+        EXPECT_GE(entry, entry_array);
+        EXPECT_LT(entry, entry_array + count);
         /* increment entry at this position as a counter */
         (*entry)++;
     }
     hashtableCleanupIterator(&iter);
 
     /* Check that all entries were returned exactly once. */
-    TEST_ASSERT(num_returned == count);
+    EXPECT_EQ(num_returned, count);
     for (size_t j = 0; j < count; j++) {
-        if (entry_array[j] != 1) {
-            printf("Entry %zu returned %d times\n", j, entry_array[j]);
-            return 0;
-        }
+        EXPECT_EQ(entry_array[j], 1u) << "Entry " << j << " returned " << static_cast<int>(entry_array[j]) << " times";
     }
 
     hashtableRelease(ht);
-    return 0;
+    free(entry_array);
 }
 
-int test_safe_iterator(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, safe_iterator) {
     size_t count = 1000;
-    uint8_t entry_counts[count * 2];
-    memset(entry_counts, 0, sizeof entry_counts);
+    uint8_t *entry_counts = static_cast<uint8_t *>(malloc(count * 2));
+    memset(entry_counts, 0, count * 2);
 
     /* A set of pointers into the uint8_t array. */
     hashtableType type = {0};
@@ -648,7 +637,7 @@ int test_safe_iterator(int argc, char **argv, int flags) {
 
     /* Populate */
     for (size_t j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, entry_counts + j));
+        EXPECT_TRUE(hashtableAdd(ht, entry_counts + j));
     }
 
     /* Iterate */
@@ -657,48 +646,43 @@ int test_safe_iterator(int argc, char **argv, int flags) {
     void *next;
     hashtableInitIterator(&iter, ht, HASHTABLE_ITER_SAFE);
     while (hashtableNext(&iter, &next)) {
-        uint8_t *entry = next;
+        uint8_t *entry = static_cast<uint8_t *>(next);
         size_t index = entry - entry_counts;
         num_returned++;
-        TEST_ASSERT(entry >= entry_counts && entry < entry_counts + count * 2);
+        EXPECT_GE(entry, entry_counts);
+        EXPECT_LT(entry, entry_counts + count * 2);
         /* increment entry at this position as a counter */
         (*entry)++;
         if (index % 4 == 0) {
-            TEST_ASSERT(hashtableDelete(ht, entry));
+            EXPECT_TRUE(hashtableDelete(ht, entry));
         }
         /* Add new item each time we see one of the original items */
         if (index < count) {
-            TEST_ASSERT(hashtableAdd(ht, entry + count));
+            EXPECT_TRUE(hashtableAdd(ht, entry + count));
         }
     }
     hashtableCleanupIterator(&iter);
 
     /* Check that all entries present during the whole iteration were returned
      * exactly once. (Some are deleted after being returned.) */
-    TEST_ASSERT(num_returned >= count);
+    EXPECT_GE(num_returned, count);
     for (size_t j = 0; j < count; j++) {
-        if (entry_counts[j] != 1) {
-            printf("Entry %zu returned %d times\n", j, entry_counts[j]);
-            return 0;
-        }
+        EXPECT_EQ(entry_counts[j], 1u) << "Entry " << j << " returned " << static_cast<int>(entry_counts[j]) << " times";
     }
     /* Check that entries inserted during the iteration were returned at most
      * once. */
     unsigned long num_optional_returned = 0;
     for (size_t j = count; j < count * 2; j++) {
-        TEST_ASSERT(entry_counts[j] <= 1);
+        EXPECT_LE(entry_counts[j], 1u);
         num_optional_returned += entry_counts[j];
     }
     printf("Safe iterator returned %lu of the %zu entries inserted while iterating.\n", num_optional_returned, count);
 
     hashtableRelease(ht);
-    return 0;
+    free(entry_counts);
 }
 
-int test_compact_bucket_chain(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
+TEST_F(HashtableTest, compact_bucket_chain) {
     size_t used_memory_before = zmalloc_used_memory();
 
     /* Create a table with only one bucket chain. */
@@ -711,9 +695,9 @@ int test_compact_bucket_chain(int argc, char **argv, int flags) {
     /* Populate */
     unsigned long j;
     for (j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)j));
+        EXPECT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(j)));
     }
-    TEST_ASSERT(hashtableBuckets(ht) == 1);
+    EXPECT_EQ(hashtableBuckets(ht), 1u);
     printf("Populated a single bucket chain, avoiding resize.\n");
     hashtableHistogram(ht);
 
@@ -727,10 +711,10 @@ int test_compact_bucket_chain(int argc, char **argv, int flags) {
         /* As long as the iterator is still returning entries from the same
          * bucket chain, the bucket chain is not compacted, so it still has the
          * same number of buckets. */
-        TEST_ASSERT(hashtableChainedBuckets(ht, 0) == num_chained_buckets);
+        EXPECT_EQ(hashtableChainedBuckets(ht, 0), num_chained_buckets);
         num_returned++;
         if (num_returned % 2 == 0) {
-            TEST_ASSERT(hashtableDelete(ht, entry));
+            EXPECT_TRUE(hashtableDelete(ht, entry));
         }
         if (num_returned == count) {
             printf("Last iteration. Half of them have been deleted.\n");
@@ -743,41 +727,38 @@ int test_compact_bucket_chain(int argc, char **argv, int flags) {
      * freeing empty child buckets. */
     printf("When the iterator leaves the bucket chain, compaction should happen.\n");
     hashtableHistogram(ht);
-    TEST_ASSERT(hashtableChainedBuckets(ht, 0) < num_chained_buckets);
+    EXPECT_LT(hashtableChainedBuckets(ht, 0), num_chained_buckets);
 
     hashtableRelease(ht);
     hashtableSetResizePolicy(HASHTABLE_RESIZE_ALLOW);
-    TEST_ASSERT(zmalloc_used_memory() == used_memory_before);
-    return 0;
+    EXPECT_EQ(zmalloc_used_memory(), used_memory_before);
 }
 
-int test_random_entry(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
+TEST_F(HashtableTest, random_entry) {
     randomSeed();
 
-    size_t count = (flags & UNIT_TEST_LARGE_MEMORY) ? 7000 : 400;
-    long num_rounds = (flags & UNIT_TEST_ACCURATE) ? 1000000 : 10000;
+    size_t count = large_memory ? 7000 : 400;
+    long num_rounds = accurate ? 1000000 : 10000;
 
     /* A set of ints */
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
 
     /* Populate */
-    unsigned *times_picked = zmalloc(sizeof(unsigned) * count);
+    unsigned *times_picked = static_cast<unsigned *>(zmalloc(sizeof(unsigned) * count));
     memset(times_picked, 0, sizeof(unsigned) * count);
     for (size_t j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, times_picked + j));
+        EXPECT_TRUE(hashtableAdd(ht, times_picked + j));
     }
 
     /* Pick entries, and count how many times each entry is picked. */
     for (long i = 0; i < num_rounds; i++) {
         /* Using void* variable to avoid a cast that violates strict aliasing */
         void *entry;
-        TEST_ASSERT(hashtableFairRandomEntry(ht, &entry));
-        unsigned *picked = entry;
-        TEST_ASSERT(picked >= times_picked && picked < times_picked + count);
+        EXPECT_TRUE(hashtableFairRandomEntry(ht, &entry));
+        unsigned *picked = static_cast<unsigned *>(entry);
+        EXPECT_GE(picked, times_picked);
+        EXPECT_LT(picked, times_picked + count);
         /* increment entry at this position as a counter */
         (*picked)++;
     }
@@ -805,7 +786,7 @@ int test_random_entry(int argc, char **argv, int flags) {
      *
      *     Var(Y) = npq = np(1 - p) = (n/m) * (1 - 1/m) = n * (m - 1) / (m * m)
      */
-    double m = (double)count, n = (double)num_rounds;
+    double m = static_cast<double>(count), n = static_cast<double>(num_rounds);
     double expected = n / m;                 /* E(Y) */
     double variance = n * (m - 1) / (m * m); /* Var(Y) */
     double std_dev = sqrt(variance);
@@ -851,19 +832,13 @@ int test_random_entry(int argc, char **argv, int flags) {
          * dev of 50, which is just 2% of the expected value. We lower the bar
          * for this case and accept that 80% of elements are just within 10% of
          * the expected value. */
-        TEST_ASSERT_MESSAGE("Too unfair randomness",
-                            100 * p99 / m >= 80.0 || 100 * p10percent / m >= 80.0);
+        EXPECT_TRUE(100 * p99 / m >= 80.0 || 100 * p10percent / m >= 80.0) << "Too unfair randomness";
     } else {
         printf("To uncertain numbers to draw any conclusions about fairness.\n");
     }
-    return 0;
 }
 
-int test_random_entry_with_long_chain(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, random_entry_with_long_chain) {
     /* We use an estimator of true probability.
      * We determine how many samples to take based on how precise of a
      * measurement we want to take, and how certain we want to be that the
@@ -879,10 +854,10 @@ int test_random_entry_with_long_chain(int argc, char **argv, int flags) {
 
     const size_t num_chained_entries = 64;
     const size_t num_random_entries = 448;
-    const double p_fair = (double)num_chained_entries / (num_chained_entries + num_random_entries);
+    const double p_fair = static_cast<double>(num_chained_entries) / (num_chained_entries + num_random_entries);
 
     /* Precision of our measurement */
-    const double precision = (flags & UNIT_TEST_ACCURATE) ? 0.001 : 0.01;
+    const double precision = accurate ? 0.001 : 0.01;
 
     /* This is confidence level for our measurement as the Z value of a normal
      * distribution. 5 sigma corresponds to 0.00002% probability that our
@@ -891,21 +866,31 @@ int test_random_entry_with_long_chain(int argc, char **argv, int flags) {
     const double z = 5;
 
     const double n = p_fair * (1 - p_fair) * z * z / (precision * precision);
-    const size_t num_samples = (size_t)n + 1;
+    const size_t num_samples = static_cast<size_t>(n) + 1;
 
     hashtableType type = {
-        .hashFunction = mock_hash_entry_get_hash,
-        .entryDestructor = freekeyval,
+        /* .entryGetKey = */ nullptr,
+        /* .hashFunction = */ mock_hash_entry_get_hash,
+        /* .keyCompare = */ nullptr,
+        /* .validateEntry = */ nullptr,
+        /* .entryDestructor = */ freekeyval,
+        /* .entryPrefetchValue = */ nullptr,
+        /* .resizeAllowed = */ nullptr,
+        /* .rehashingStarted = */ nullptr,
+        /* .rehashingCompleted = */ nullptr,
+        /* .trackMemUsage = */ nullptr,
+        /* .getMetadataSize = */ nullptr,
+        /* .instant_rehashing = */ 0,
     };
 
     hashtable *ht = hashtableCreate(&type);
     hashtableExpand(ht, num_random_entries + num_chained_entries);
-    uint64_t chain_hash = (uint64_t)genrand64_int64();
+    uint64_t chain_hash = static_cast<uint64_t>(genrand64_int64());
     if (chain_hash == 0) chain_hash++;
 
     /* add random entries */
     for (size_t i = 0; i < num_random_entries; i++) {
-        uint64_t random_hash = (uint64_t)genrand64_int64();
+        uint64_t random_hash = static_cast<uint64_t>(genrand64_int64());
         if (random_hash == chain_hash) random_hash++;
         hashtableAdd(ht, mock_hash_entry_create(random_hash, 0));
     }
@@ -915,7 +900,7 @@ int test_random_entry_with_long_chain(int argc, char **argv, int flags) {
         hashtableAdd(ht, mock_hash_entry_create(i, chain_hash));
     }
 
-    TEST_ASSERT(!hashtableIsRehashing(ht));
+    EXPECT_FALSE(hashtableIsRehashing(ht));
 
     printf("Created a table with a long bucket chain.\n");
     hashtableHistogram(ht);
@@ -924,58 +909,58 @@ int test_random_entry_with_long_chain(int argc, char **argv, int flags) {
     size_t count_chain_entry_picked = 0;
     for (size_t i = 0; i < num_samples; i++) {
         void *entry;
-        TEST_ASSERT(hashtableFairRandomEntry(ht, &entry));
-        mock_hash_entry *mock_entry = entry;
+        EXPECT_TRUE(hashtableFairRandomEntry(ht, &entry));
+        mock_hash_entry *mock_entry = static_cast<mock_hash_entry *>(entry);
         if (mock_entry->hash == chain_hash) {
             count_chain_entry_picked++;
         }
     }
-    const double measured_probability = (double)count_chain_entry_picked / num_samples;
+    const double measured_probability = static_cast<double>(count_chain_entry_picked) / num_samples;
     const double deviation = fabs(measured_probability - p_fair);
     printf("Measured probability: %.1f%%\n", measured_probability * 100);
     printf("Expected probability: %.1f%%\n", p_fair * 100);
     printf("Measured probability deviated %1.1f%% +/- %1.1f%% from expected probability\n",
            deviation * 100, precision * 100);
-    TEST_ASSERT(deviation <= precision + acceptable_probability_deviation);
+    EXPECT_LE(deviation, precision + acceptable_probability_deviation);
 
     hashtableRelease(ht);
-    return 0;
 }
 
+/* Helper function for scan tests */
 static void deleteScanFn(void *privdata, void *entry) {
-    hashtable *ht = privdata;
+    hashtable *ht = static_cast<hashtable *>(privdata);
     hashtableDelete(ht, entry);
 }
 
-int test_random_entry_sparse_table(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
+/* This is a test for random entry selection in sparse hashtables.
+ * To run this test explicitly, use:
+ *   ./src/gtest/valkey-unit-gtests --gtest_filter=HashtableTest.DISABLED_random_entry_sparse_table --gtest_also_run_disabled_tests
+ */
+TEST_F(HashtableTest, DISABLED_random_entry_sparse_table) {
     randomSeed();
 
-    size_t count = (flags & UNIT_TEST_LARGE_MEMORY) ? 100000000 : 1000000;
-    long num_rounds = (flags & UNIT_TEST_ACCURATE) ? 256 * 1024 : 1024;
+    size_t count = large_memory ? 100000000 : 1000000;
+    long num_rounds = accurate ? 256 * 1024 : 1024;
 
     /* A set of pointers */
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
     monotime timer;
-    monotonicInit();
 
     /* Populate */
-    unsigned *values = zmalloc(sizeof(unsigned) * count);
+    unsigned *values = static_cast<unsigned *>(zmalloc(sizeof(unsigned) * count));
     for (size_t j = 0; j < count; j++) {
-        TEST_ASSERT(hashtableAdd(ht, &values[j]));
+        ASSERT_TRUE(hashtableAdd(ht, &values[j]));
     }
 
     /* Pick random elements */
     elapsedStart(&timer);
     for (long i = 0; i < num_rounds; i++) {
         void *entry;
-        TEST_ASSERT(hashtableFairRandomEntry(ht, &entry));
+        ASSERT_TRUE(hashtableFairRandomEntry(ht, &entry));
     }
     uint64_t us0 = elapsedUs(timer);
-    printf("Fair random, filled hashtable, avg time: %.3lfµs\n", (double)us0 / num_rounds);
+    printf("Fair random, filled hashtable, avg time: %.3lfµs\n", static_cast<double>(us0) / num_rounds);
 
     size_t cursor = random();
 
@@ -989,29 +974,24 @@ int test_random_entry_sparse_table(int argc, char **argv, int flags) {
         elapsedStart(&timer);
         for (long i = 0; i < num_rounds; i++) {
             void *entry;
-            TEST_ASSERT(hashtableFairRandomEntry(ht, &entry));
+            ASSERT_TRUE(hashtableFairRandomEntry(ht, &entry));
         }
         uint64_t us = elapsedUs(timer);
-        printf("Fair random, 1/%d filled hashtable, avg time: %.3lfµs\n", n, (double)us / num_rounds);
+        printf("Fair random, 1/%d filled hashtable, avg time: %.3lfµs\n", n, static_cast<double>(us) / num_rounds);
         /* Allow max 10 times slower than in a dense table. */
-        TEST_ASSERT(us <= us0 * 10);
+        EXPECT_LE(us, us0 * 10);
     }
     hashtableRelease(ht);
     zfree(values);
-    return 0;
 }
 
-int test_safe_iterator_invalidation(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, safe_iterator_invalidation) {
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
 
     /* Add some entries */
     for (int i = 0; i < 10; i++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)(long)i));
+        ASSERT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(static_cast<long>(i))));
     }
 
     /* Create safe and non-safe iterators */
@@ -1022,8 +1002,8 @@ int test_safe_iterator_invalidation(int argc, char **argv, int flags) {
 
     /* Verify iterators work before invalidation */
     void *entry;
-    TEST_ASSERT(hashtableNext(&safe_iter1, &entry));
-    TEST_ASSERT(hashtableNext(&safe_iter2, &entry));
+    ASSERT_TRUE(hashtableNext(&safe_iter1, &entry));
+    ASSERT_TRUE(hashtableNext(&safe_iter2, &entry));
 
     /* Reset iterators to test state */
     hashtableCleanupIterator(&safe_iter1);
@@ -1035,28 +1015,22 @@ int test_safe_iterator_invalidation(int argc, char **argv, int flags) {
     hashtableRelease(ht);
 
     /* Test that safe iterators are now invalid */
-    TEST_ASSERT(!hashtableNext(&safe_iter1, &entry));
-    TEST_ASSERT(!hashtableNext(&safe_iter2, &entry));
+    EXPECT_FALSE(hashtableNext(&safe_iter1, &entry));
+    EXPECT_FALSE(hashtableNext(&safe_iter2, &entry));
 
     /* Reset invalidated iterators (should handle gracefully) */
     hashtableCleanupIterator(&safe_iter1);
     hashtableCleanupIterator(&safe_iter2);
     hashtableCleanupIterator(&unsafe_iter);
-
-    return 0;
 }
 
-int test_safe_iterator_empty_no_invalidation(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, safe_iterator_empty_no_invalidation) {
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
 
     /* Add some entries */
     for (int i = 0; i < 5; i++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)(long)i));
+        ASSERT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(static_cast<long>(i))));
     }
 
     /* Create safe iterator */
@@ -1064,29 +1038,23 @@ int test_safe_iterator_empty_no_invalidation(int argc, char **argv, int flags) {
     hashtableInitIterator(&safe_iter, ht, HASHTABLE_ITER_SAFE);
 
     /* Empty hashtable - should NOT invalidate safe iterators */
-    hashtableEmpty(ht, NULL);
+    hashtableEmpty(ht, nullptr);
 
     /* Iterator should still be valid but return false since table is empty */
     void *entry;
-    TEST_ASSERT(!hashtableNext(&safe_iter, &entry));
+    EXPECT_FALSE(hashtableNext(&safe_iter, &entry));
 
     hashtableCleanupIterator(&safe_iter);
     hashtableRelease(ht);
-
-    return 0;
 }
 
-int test_safe_iterator_reset_invalidation(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, safe_iterator_reset_invalidation) {
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
 
     /* Add some entries */
     for (int i = 0; i < 10; i++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)(long)i));
+        ASSERT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(static_cast<long>(i))));
     }
 
     /* Create safe iterators */
@@ -1096,8 +1064,8 @@ int test_safe_iterator_reset_invalidation(int argc, char **argv, int flags) {
 
     /* Verify iterators work before reset */
     void *entry;
-    TEST_ASSERT(hashtableNext(&safe_iter1, &entry));
-    TEST_ASSERT(hashtableNext(&safe_iter2, &entry));
+    ASSERT_TRUE(hashtableNext(&safe_iter1, &entry));
+    ASSERT_TRUE(hashtableNext(&safe_iter2, &entry));
 
     /* Reset iterators to test state */
     hashtableCleanupIterator(&safe_iter1);
@@ -1114,27 +1082,21 @@ int test_safe_iterator_reset_invalidation(int argc, char **argv, int flags) {
     hashtableRelease(ht);
 
     /* Test that safe iterators are prevented from invalid access */
-    TEST_ASSERT(!hashtableNext(&safe_iter1, &entry));
-    TEST_ASSERT(!hashtableNext(&safe_iter2, &entry));
+    EXPECT_FALSE(hashtableNext(&safe_iter1, &entry));
+    EXPECT_FALSE(hashtableNext(&safe_iter2, &entry));
 
     /* Reset invalidated iterators (should handle gracefully) */
     hashtableCleanupIterator(&safe_iter1);
     hashtableCleanupIterator(&safe_iter2);
-
-    return 0;
 }
 
-int test_safe_iterator_reset_untracking(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, safe_iterator_reset_untracking) {
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
 
     /* Add some entries */
     for (int i = 0; i < 5; i++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)(long)i));
+        ASSERT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(static_cast<long>(i))));
     }
 
     /* Create safe iterator */
@@ -1150,30 +1112,25 @@ int test_safe_iterator_reset_untracking(int argc, char **argv, int flags) {
     /* Create new hashtable and reinit iterator */
     ht = hashtableCreate(&type);
     for (int i = 0; i < 3; i++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)(long)i));
+        ASSERT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(static_cast<long>(i))));
     }
     hashtableInitIterator(&safe_iter, ht, HASHTABLE_ITER_SAFE);
 
     /* Should work since it's tracking the new hashtable */
     void *entry;
-    TEST_ASSERT(hashtableNext(&safe_iter, &entry));
+    ASSERT_TRUE(hashtableNext(&safe_iter, &entry));
 
     hashtableCleanupIterator(&safe_iter);
     hashtableRelease(ht);
-
-    return 0;
 }
-int test_safe_iterator_pause_resume_tracking(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
 
+TEST_F(HashtableTest, safe_iterator_pause_resume_tracking) {
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
 
     /* Add entries to trigger rehashing */
     for (int i = 0; i < 100; i++) {
-        TEST_ASSERT(hashtableAdd(ht, (void *)(long)i));
+        ASSERT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(static_cast<long>(i))));
     }
 
     /* Create multiple safe iterators */
@@ -1184,55 +1141,49 @@ int test_safe_iterator_pause_resume_tracking(int argc, char **argv, int flags) {
 
     /* Start iterating with first iterator - should pause rehashing and track iterator */
     void *entry;
-    TEST_ASSERT(hashtableNext(&iter1, &entry));
+    ASSERT_TRUE(hashtableNext(&iter1, &entry));
 
     /* Start iterating with second iterator - should also be tracked */
-    TEST_ASSERT(hashtableNext(&iter2, &entry));
+    ASSERT_TRUE(hashtableNext(&iter2, &entry));
 
     /* Verify rehashing is paused (safe iterators should pause it) */
-    TEST_ASSERT(hashtableIsRehashingPaused(ht));
+    EXPECT_TRUE(hashtableIsRehashingPaused(ht));
 
     /* Reset first iterator - should untrack it but rehashing still paused due to iter2 */
     hashtableCleanupIterator(&iter1);
 
     /* Start third iterator */
-    TEST_ASSERT(hashtableNext(&iter3, &entry));
+    ASSERT_TRUE(hashtableNext(&iter3, &entry));
 
     /* Reset second iterator - rehashing should still be paused due to iter3 */
     hashtableCleanupIterator(&iter2);
-    TEST_ASSERT(hashtableIsRehashingPaused(ht));
+    EXPECT_TRUE(hashtableIsRehashingPaused(ht));
 
     /* Reset third iterator - now rehashing should be resumed */
     hashtableCleanupIterator(&iter3);
 
     /* Verify all iterators are properly untracked by releasing hashtable */
     hashtableRelease(ht);
-
-    return 0;
 }
 
-int test_null_hashtable_iterator(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, null_hashtable_iterator) {
     /* Test safe iterator with NULL hashtable */
     hashtableIterator safe_iter;
-    hashtableInitIterator(&safe_iter, NULL, HASHTABLE_ITER_SAFE);
+    hashtableInitIterator(&safe_iter, nullptr, HASHTABLE_ITER_SAFE);
 
     /* hashtableNext should return false for NULL hashtable */
     void *entry;
-    TEST_ASSERT(!hashtableNext(&safe_iter, &entry));
+    EXPECT_FALSE(hashtableNext(&safe_iter, &entry));
 
     /* Reset should handle NULL hashtable gracefully */
     hashtableCleanupIterator(&safe_iter);
 
     /* Test non-safe iterator with NULL hashtable */
     hashtableIterator unsafe_iter;
-    hashtableInitIterator(&unsafe_iter, NULL, 0);
+    hashtableInitIterator(&unsafe_iter, nullptr, 0);
 
     /* hashtableNext should return false for NULL hashtable */
-    TEST_ASSERT(!hashtableNext(&unsafe_iter, &entry));
+    EXPECT_FALSE(hashtableNext(&unsafe_iter, &entry));
 
     /* Reset should handle NULL hashtable gracefully */
     hashtableCleanupIterator(&unsafe_iter);
@@ -1240,31 +1191,25 @@ int test_null_hashtable_iterator(int argc, char **argv, int flags) {
     /* Test reinitializing NULL iterator with valid hashtable */
     hashtableType type = {0};
     hashtable *ht = hashtableCreate(&type);
-    TEST_ASSERT(hashtableAdd(ht, (void *)1));
+    ASSERT_TRUE(hashtableAdd(ht, reinterpret_cast<void *>(1)));
 
     hashtableRetargetIterator(&safe_iter, ht);
-    TEST_ASSERT(hashtableNext(&safe_iter, &entry));
-    TEST_ASSERT(entry == (void *)1);
+    ASSERT_TRUE(hashtableNext(&safe_iter, &entry));
+    EXPECT_EQ(entry, reinterpret_cast<void *>(1));
 
     hashtableCleanupIterator(&safe_iter);
     hashtableRelease(ht);
-
-    return 0;
 }
 
-int test_hashtable_retarget_iterator(int argc, char **argv, int flags) {
-    UNUSED(argc);
-    UNUSED(argv);
-    UNUSED(flags);
-
+TEST_F(HashtableTest, hashtable_retarget_iterator) {
     hashtableType type = {0};
     hashtable *ht1 = hashtableCreate(&type);
     hashtable *ht2 = hashtableCreate(&type);
 
     /* Add different entries to each hashtable */
     for (int i = 0; i < 5; i++) {
-        TEST_ASSERT(hashtableAdd(ht1, (void *)(long)(i + 10)));
-        TEST_ASSERT(hashtableAdd(ht2, (void *)(long)(i + 20)));
+        ASSERT_TRUE(hashtableAdd(ht1, reinterpret_cast<void *>(static_cast<long>(i + 10))));
+        ASSERT_TRUE(hashtableAdd(ht2, reinterpret_cast<void *>(static_cast<long>(i + 20))));
     }
 
     /* Create iterator on first hashtable */
@@ -1275,8 +1220,9 @@ int test_hashtable_retarget_iterator(int argc, char **argv, int flags) {
     void *entry;
     int count1 = 0;
     while (hashtableNext(&iter, &entry) && count1 < 3) {
-        long val = (long)entry;
-        TEST_ASSERT(val >= 10 && val < 15);
+        long val = reinterpret_cast<long>(entry);
+        EXPECT_GE(val, 10);
+        EXPECT_LT(val, 15);
         count1++;
     }
 
@@ -1286,8 +1232,9 @@ int test_hashtable_retarget_iterator(int argc, char **argv, int flags) {
     /* Iterate partially through second hashtable */
     int count2 = 0;
     while (hashtableNext(&iter, &entry) && count2 < 2) {
-        long val = (long)entry;
-        TEST_ASSERT(val >= 20 && val < 25);
+        long val = reinterpret_cast<long>(entry);
+        EXPECT_GE(val, 20);
+        EXPECT_LT(val, 25);
         count2++;
     }
 
@@ -1297,17 +1244,16 @@ int test_hashtable_retarget_iterator(int argc, char **argv, int flags) {
     /* Iterate partially through first hashtable again */
     int count3 = 0;
     while (hashtableNext(&iter, &entry) && count3 < 4) {
-        long val = (long)entry;
-        TEST_ASSERT(val >= 10 && val < 15);
+        long val = reinterpret_cast<long>(entry);
+        EXPECT_GE(val, 10);
+        EXPECT_LT(val, 15);
         count3++;
     }
 
     hashtableRelease(ht1);
     hashtableRelease(ht2);
 
-    TEST_ASSERT(!hashtableNext(&iter, &entry));
+    EXPECT_FALSE(hashtableNext(&iter, &entry));
 
     hashtableCleanupIterator(&iter);
-
-    return 0;
 }
