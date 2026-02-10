@@ -47,6 +47,9 @@ extern "C" {
 #include "rax.h"
 #include "mt19937-64.c"
 #include "util.h"
+
+extern bool accurate;
+extern bool large_memory;
 uint16_t crc16(const char *buf, int len); /* From crc16.c */
 }
 
@@ -877,6 +880,7 @@ TEST_F(RaxTest, DISABLED_raxBenchmark) {
  *
  * This test is disabled by default because it uses a lot of memory. */
 TEST_F(RaxTest, DISABLED_raxHugeKey) {
+    if (!large_memory) GTEST_SKIP() << "Skipping large memory test";
     size_t max_keylen = ((1 << 29) - 1) + 100;
     unsigned char *key = static_cast<unsigned char *>(zmalloc(max_keylen));
     if (key == nullptr) {
@@ -917,6 +921,8 @@ TEST_F(RaxTest, DISABLED_raxHugeKey) {
  *   ./src/gtest/valkey-unit-gtests --gtest_filter=RaxTest.DISABLED_raxFuzz --gtest_also_run_disabled_tests
  */
 TEST_F(RaxTest, DISABLED_raxFuzz) {
+    if (!accurate) GTEST_SKIP() << "Skipping accurate test";
+
     int errors = 0;
 
     init_genrand64(1234);
@@ -981,6 +987,7 @@ TEST_F(RaxTest, DISABLED_raxFuzz) {
  *
  * This test is disabled by default because it uses a lot of memory. */
 TEST_F(RaxTest, DISABLED_raxRecompressHugeKey) {
+    if (!large_memory) GTEST_SKIP() << "Skipping large memory test";
     rax *rt = raxNew();
 
     /* Insert small keys */

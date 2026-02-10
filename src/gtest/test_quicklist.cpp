@@ -18,14 +18,14 @@ extern "C" {
 #include "listpack.h"
 #include "quicklist.h"
 
+extern bool accurate;
+extern bool large_memory;
 /* Wrapper function declarations for accessing static quicklist.c internals */
 size_t gtest_quicklist_node_neg_fill_limit(int fill);
 quicklistNode *gtest_quicklistCreateNode(void);
 quicklistNode *gtest_quicklistCreateNodeWithValue(int container, void *value, size_t sz);
 int gtest_quicklistCompressNode(quicklistNode *node);
 int gtest_quicklistDecompressNode(quicklistNode *node);
-
-extern bool accurate;
 }
 
 /* Constants from quicklist.c */
@@ -238,16 +238,12 @@ static void ql_release_iterator(quicklistIter *iter) {
  *----------------------------------------------------------------------------*/
 class QuicklistTest : public ::testing::Test {
 protected:
-    bool large_memory = false;
-
     void SetUp() override {
         err = 0;
         for (int i = 0; i < 8; i++) {
             runtime[i] = 0;
         }
-        /* Check if we should run large memory tests */
-        const char *env = getenv("VALKEY_TEST_LARGE_MEMORY");
-        large_memory = (env != nullptr && strcmp(env, "1") == 0);
+
     }
 };
 
@@ -1625,8 +1621,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestDAtCompress) {
 TEST_F(QuicklistTest, quicklistVerifySpecificCompressionOfInteriorNodes) {
     /* Run a longer test of compression depth outside of primary test loop. */
     int list_sizes[] = {250, 251, 500, 999, 1000};
-    // int list_count = accurate ? static_cast<int>(sizeof(list_sizes) / sizeof(*list_sizes)) : 1;
-    int list_count = 1;
+    int list_count = accurate ? static_cast<int>(sizeof(list_sizes) / sizeof(*list_sizes)) : 1;
     for (int list = 0; list < list_count; list++) {
         for (int f = 0; f < fill_count; f++) {
             for (int depth = 1; depth < 40; depth++) {

@@ -12,6 +12,7 @@ extern "C" {
 #include "zmalloc.h"
 #include "ziplist.h"
 
+extern bool accurate;
 /* External declarations for internal ziplist.c types and symbols needed for testing */
 typedef struct zlentry {
     unsigned int prevrawlensize;
@@ -633,31 +634,72 @@ TEST_F(ZiplistTest, ziplistMergeTest) {
  *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistStressWithRandomPayloadsOfDifferentEncoding --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistStressWithRandomPayloadsOfDifferentEncoding) {
-    unsigned char *zl, *p;
+    int i, j, len, where;
+    unsigned char *p;
     char buf[1024];
-    int i, len, where;
+    int buflen;
+    list *ref;
+    listNode *refnode;
 
-    int elements = 100;
-    srand(0);
+    /* Hold temp vars from ziplist */
+    unsigned char *sstr;
+    unsigned int slen;
+    long long sval = 0;
 
-    zl = ziplistNew();
-    for (i = 0; i < elements; i++) {
-        where = (rand() & 1) ? ZIPLIST_HEAD : ZIPLIST_TAIL;
-        if (rand() % 2) {
-            len = randstring(buf, 1, sizeof(buf) - 1);
-        } else {
-            len = snprintf(buf, sizeof(buf), "%d", rand());
+    int iteration = accurate ? 20000 : 20;
+    for (i = 0; i < iteration; i++) {
+        unsigned char *zl = ziplistNew();
+        ref = listCreate();
+        listSetFreeMethod(ref, sdsfreeVoid);
+        len = rand() % 256;
+
+        /* Create lists */
+        for (j = 0; j < len; j++) {
+            where = (rand() & 1) ? ZIPLIST_HEAD : ZIPLIST_TAIL;
+            if (rand() % 2) {
+                buflen = randstring(buf, 1, sizeof(buf) - 1);
+            } else {
+                switch (rand() % 3) {
+                case 0: buflen = snprintf(buf, sizeof(buf), "%lld", (0LL + rand()) >> 20); break;
+                case 1: buflen = snprintf(buf, sizeof(buf), "%lld", (0LL + rand())); break;
+                case 2: buflen = snprintf(buf, sizeof(buf), "%lld", (0LL + rand()) << 20); break;
+                default: EXPECT_TRUE(false);
+                }
+            }
+
+            /* Add to ziplist */
+            zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(buf), buflen, where);
+
+            /* Add to reference list */
+            if (where == ZIPLIST_HEAD) {
+                listAddNodeHead(ref, sdsnewlen(buf, buflen));
+            } else if (where == ZIPLIST_TAIL) {
+                listAddNodeTail(ref, sdsnewlen(buf, buflen));
+            } else {
+                EXPECT_TRUE(false);
+            }
         }
-        zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(buf), len, where);
-    }
 
-    for (i = 0; i < 1000; i++) {
-        int index = rand() % elements;
-        p = ziplistIndex(zl, index);
-        EXPECT_NE(p, nullptr);
-    }
+        EXPECT_EQ(listLength(ref), ziplistLen(zl));
+        for (j = 0; j < len; j++) {
+            /* Naive way to get elements, but similar to the stresser
+             * executed from the Tcl test suite. */
+            p = ziplistIndex(zl, j);
+            refnode = listIndex(ref, j);
 
-    zfree(zl);
+            EXPECT_TRUE(ziplistGet(p, &sstr, &slen, &sval));
+            if (sstr == nullptr) {
+                buflen = snprintf(buf, sizeof(buf), "%lld", sval);
+            } else {
+                buflen = slen;
+                memcpy(buf, sstr, buflen);
+                buf[buflen] = '\0';
+            }
+            EXPECT_EQ(memcmp(buf, listNodeValue(refnode), buflen), 0);
+        }
+        zfree(zl);
+        listRelease(ref);
+    }
 }
 
 TEST_F(ZiplistTest, ziplistCascadeUpdateEdgeCases) {
@@ -792,7 +834,7 @@ TEST_F(ZiplistTest, ziplistInsertEdgeCase) {
  */
 TEST_F(ZiplistTest, DISABLED_ziplistStressWithVariableSize) {
     unsigned long long start = usec();
-    int maxsize = 16384;
+    int maxsize = accurate ? 16384 : 16;
     stress(ZIPLIST_HEAD, 100000, maxsize, 256);
     printf("Stress with variable size HEAD: %lld usec\n", usec() - start);
 
@@ -807,7 +849,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistStressWithVariableSize) {
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistFind) {
     unsigned char *zl = ziplistNew();
-    int iteration = 100;
+    int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
         zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(buf), 4, ZIPLIST_TAIL);
@@ -838,7 +880,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistFind) {
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistIndex) {
     unsigned char *zl = ziplistNew();
-    int iteration = 100000;
+    int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
         zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(buf), 4, ZIPLIST_TAIL);
@@ -868,7 +910,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistIndex) {
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistValidateIntegrity) {
     unsigned char *zl = ziplistNew();
-    int iteration = 100000;
+    int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
         zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(buf), 4, ZIPLIST_TAIL);
@@ -897,7 +939,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistValidateIntegrity) {
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithString) {
     unsigned char *zl = ziplistNew();
-    int iteration = 100000;
+    int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
         zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(buf), 4, ZIPLIST_TAIL);
@@ -930,7 +972,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithString) {
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithNumber) {
     unsigned char *zl = ziplistNew();
-    int iteration = 100000;
+    int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
         zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(buf), 4, ZIPLIST_TAIL);
@@ -964,7 +1006,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithNumber) {
 TEST_F(ZiplistTest, DISABLED_ziplistStress__ziplistCascadeUpdate) {
     char data[ZIP_BIG_PREVLEN];
     unsigned char *zl = ziplistNew();
-    int iteration = 100000;
+    int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         zl = ziplistPush(zl, reinterpret_cast<unsigned char *>(data), ZIP_BIG_PREVLEN - 4, ZIPLIST_TAIL);
     }

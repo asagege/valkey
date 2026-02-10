@@ -14,6 +14,8 @@ extern "C" {
 #include "sds.h"
 #include "sdsalloc.h"
 #include "util.h"
+
+extern bool large_memory;
 }
 
 static sds sdsTestTemplateCallback(const_sds varname, void *arg) {
@@ -352,7 +354,7 @@ TEST_F(SdsTest, TestTypesAndAllocSize) {
     sdsfree(x);
 
 #if (LONG_MAX == LLONG_MAX)
-    if (testing::GTEST_FLAG(filter) == "*TestTypesAndAllocSize*") {
+    if (large_memory) {
         x = sdsnewlen(NULL, 4294967286);
         /* len 4294967286 type */
         EXPECT_GE((x[-1] & SDS_TYPE_MASK), SDS_TYPE_32);

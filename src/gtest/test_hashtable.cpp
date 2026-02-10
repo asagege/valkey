@@ -19,6 +19,7 @@ extern "C" {
 #include "monotonic.h"
 
 extern bool accurate;
+extern bool large_memory;
 extern char* seed;
 /* From util.c: getRandomBytes to seed hash function. */
 void getRandomBytes(unsigned char *p, size_t len);
@@ -148,7 +149,7 @@ TEST_F(HashtableTest, set_hash_function_seed) {
 }
 
 static void add_find_delete_test_helper() {
-    int count = 200;
+    int count = accurate ? 1000000 : 200;
     EXPECT_EQ(mem_usage, 0u);
     hashtable *ht = hashtableCreate(&keyval_type);
     int j;
@@ -329,7 +330,7 @@ TEST_F(HashtableTest, bucket_chain_length) {
 }
 
 TEST_F(HashtableTest, two_phase_insert_and_pop) {
-    int count = 200;
+    int count = accurate ? 1000000 : 200;
     hashtable *ht = hashtableCreate(&keyval_type);
     int j;
 
@@ -513,8 +514,8 @@ static void scanfn(void *privdata, void *entry) {
 }
 
 TEST_F(HashtableTest, scan) {
-    long num_entries = 200000;
-    int num_rounds = 5;
+    long num_entries = large_memory ? 1000000 : 200000;
+    int num_rounds = accurate ? 20 : 5;
 
     /* A set of longs, i.e. pointer-sized values. */
     hashtableType type = {0};
@@ -736,8 +737,8 @@ TEST_F(HashtableTest, compact_bucket_chain) {
 TEST_F(HashtableTest, random_entry) {
     randomSeed();
 
-    size_t count = 400;
-    long num_rounds = 10000;
+    size_t count = large_memory ? 7000 : 400;
+    long num_rounds = accurate ? 1000000 : 10000;
 
     /* A set of ints */
     hashtableType type = {0};
@@ -856,7 +857,7 @@ TEST_F(HashtableTest, random_entry_with_long_chain) {
     const double p_fair = static_cast<double>(num_chained_entries) / (num_chained_entries + num_random_entries);
 
     /* Precision of our measurement */
-    const double precision = 0.01;
+    const double precision = accurate ? 0.001 : 0.01;
 
     /* This is confidence level for our measurement as the Z value of a normal
      * distribution. 5 sigma corresponds to 0.00002% probability that our
@@ -938,8 +939,8 @@ static void deleteScanFn(void *privdata, void *entry) {
 TEST_F(HashtableTest, DISABLED_random_entry_sparse_table) {
     randomSeed();
 
-    size_t count = 1000000;
-    long num_rounds = 1024;
+    size_t count = large_memory ? 100000000 : 1000000;
+    long num_rounds = accurate ? 256 * 1024 : 1024;
 
     /* A set of pointers */
     hashtableType type = {0};

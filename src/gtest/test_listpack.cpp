@@ -987,7 +987,7 @@ TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
     list *ref;
     listNode *refnode;
 
-    int iteration = 20;
+    int iteration = accurate ? 20000 : 20;
     for (i = 0; i < iteration; i++) {
         lp = lpNew(0);
         ref = listCreate();
@@ -1048,7 +1048,7 @@ TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
 TEST_F(ListpackTest, DISABLED_listpackSTressWithVariableSize) {
     /* Stress with variable listpack size */
     unsigned long long start = usec();
-    int maxsize = 16;
+    int maxsize = accurate ? 16384 : 16;
     stress(0, 100000, maxsize, 256);
     stress(1, 100000, maxsize, 256);
     printf("Done. usec=%lld\n\n", usec() - start);
@@ -1065,7 +1065,7 @@ protected:
     static int iteration;
 
     static void SetUpTestSuite() {
-        iteration = 100;
+        iteration = accurate ? 100000 : 100;
         lp = lpNew(0);
     }
 

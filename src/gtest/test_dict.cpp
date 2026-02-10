@@ -11,6 +11,7 @@
 extern "C" {
 #include "dict.h"
 
+extern bool accurate;
 /* Wrapper function declarations for accessing static dict.c internals */
 unsigned int gtest_dict_get_force_resize_ratio(void);
 signed char gtest_dict_next_exp(unsigned long size);
@@ -318,7 +319,7 @@ TEST_F(DictTest, DISABLED_dictBenchmark) {
     long long start, elapsed;
     int retval;
     dict *dict = dictCreate(&BenchmarkDictType);
-    long count = 5000;
+    long count = accurate ? 5000000 : 5000;
 
     #define start_benchmark() start = gtest_time_in_milliseconds()
     #define end_benchmark(msg)                                      \

@@ -15,6 +15,8 @@ extern "C" {
 #include "config.h"
 #include "fmacros.h"
 #include "util.h"
+
+extern bool valgrind;
 }
 
 #if defined(__linux__)
@@ -281,6 +283,9 @@ static int cache_exist(int fd) {
 #endif
 
 TEST_F(UtilTest, TestReclaimFilePageCache) {
+    /* The test is incompatible with valgrind, skip it. */
+    if (valgrind) GTEST_SKIP() << "Skipping test due to incompatibility with valgrind";
+
 #if defined(__linux__)
     struct statfs stats;
 
