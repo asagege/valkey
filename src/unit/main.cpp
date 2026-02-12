@@ -40,7 +40,9 @@ int main(int argc, char **argv) {
     valgrind = hasFlag(argc, argv, "--valgrind");
     seed = getFlagValue(argc, argv, "--seed");
     if (seed) {
-        srandom(static_cast<unsigned>(atoi(seed)));
+        unsigned int seed_value = static_cast<unsigned int>(atoi(seed));
+        srandom(seed_value);
+        srand(seed_value);
 
         // Convert the seed to a 128-character hexadecimal string
         // by hashing it with SHA256 twice (to get 64 bytes = 128 hex chars)

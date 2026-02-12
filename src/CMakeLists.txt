@@ -110,7 +110,7 @@ if (BUILD_EXAMPLE_MODULES)
 endif ()
 
 if (BUILD_UNIT_GTESTS)
-    add_subdirectory(gtest)
+    add_subdirectory(unit)
 endif ()
 
 # Friendly hint like the Makefile one

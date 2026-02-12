@@ -797,7 +797,7 @@ TEST_F(RaxTest, raxRegressionTest6) {
 
 /* This is a benchmark test for rax performance.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=RaxTest.DISABLED_raxBenchmark --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=RaxTest.DISABLED_raxBenchmark --gtest_also_run_disabled_tests
  */
 TEST_F(RaxTest, DISABLED_raxBenchmark) {
     size_t used_memory_before = zmalloc_used_memory();
@@ -918,7 +918,7 @@ TEST_F(RaxTest, DISABLED_raxHugeKey) {
 
 /* This is a fuzz test for rax data structure.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=RaxTest.DISABLED_raxFuzz --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=RaxTest.DISABLED_raxFuzz --gtest_also_run_disabled_tests
  */
 TEST_F(RaxTest, DISABLED_raxFuzz) {
     if (!accurate) GTEST_SKIP() << "Skipping accurate test";

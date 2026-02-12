@@ -974,7 +974,7 @@ TEST_F(ListpackTest, listpackNumberOfElementsExceedsLP_HDR_NUMELE_UNKNOWN) {
 
 /* This is a stress test with random payloads of different encoding.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ListpackTest.DISABLED_listpackStressWithRandom --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ListpackTest.DISABLED_listpackStressWithRandom --gtest_also_run_disabled_tests
  */
 TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
     /* Stress with random payloads of different encoding */
@@ -1046,7 +1046,7 @@ TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
 
 /* This is a stress test with variable listpack size.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ListpackTest.DISABLED_listpackSTressWithVariableSize --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ListpackTest.DISABLED_listpackSTressWithVariableSize --gtest_also_run_disabled_tests
  */
 TEST_F(ListpackTest, DISABLED_listpackSTressWithVariableSize) {
     /* Stress with variable listpack size */
@@ -1059,7 +1059,7 @@ TEST_F(ListpackTest, DISABLED_listpackSTressWithVariableSize) {
 
 /* Benchmark tests - these are DISABLED by default.
  * To run benchmark tests explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ListpackTest.DISABLED_listpackBenchmark* --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ListpackTest.DISABLED_listpackBenchmark* --gtest_also_run_disabled_tests
  */
 
 class ListpackBenchmark : public ::testing::Test {

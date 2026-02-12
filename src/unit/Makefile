@@ -62,7 +62,7 @@ ifeq ($(IS_GCC),g++)
 	MORE_WARNINGS += -Wsync-nand -Wtrampolines -Werror=logical-op -Werror=aggressive-loop-optimizations
 	GCC_FLAGS += -fno-var-tracking-assignments
 else
-	# Clang: disable warnings that are errors in gtest/gmock
+	# Clang: disable warnings that are errors in unit/gmock
 	MORE_WARNINGS += -Wno-deprecated-copy
 	MORE_WARNINGS += -Wno-keyword-macro
 endif
@@ -214,8 +214,8 @@ endif
 .PHONY: all
 all: valkey-unit-gtests
 
-.PHONY: test-gtest
-test-gtest: valkey-unit-gtests
+.PHONY: test-unit
+test-unit: valkey-unit-gtests
 	python3 ../../deps/gtest-parallel/gtest_parallel.py ./valkey-unit-gtests
 
 .PHONY: valgrind

@@ -631,7 +631,7 @@ TEST_F(ZiplistTest, ziplistMergeTest) {
 
 /* This is a stress test with random payloads of different encoding.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistStressWithRandomPayloadsOfDifferentEncoding --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistStressWithRandomPayloadsOfDifferentEncoding --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistStressWithRandomPayloadsOfDifferentEncoding) {
     int i, j, len, where;
@@ -830,7 +830,7 @@ TEST_F(ZiplistTest, ziplistInsertEdgeCase) {
 
 /* This is a stress test with variable size.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistStressWithVariableSize --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistStressWithVariableSize --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistStressWithVariableSize) {
     unsigned long long start = usec();
@@ -845,7 +845,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistStressWithVariableSize) {
 
 /* This is a special unit test useful for benchmarking ziplistFind performance.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistFind --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistFind --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistFind) {
     unsigned char *zl = ziplistNew();
@@ -876,7 +876,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistFind) {
 
 /* This is a benchmark test for ziplistIndex.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistIndex --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistIndex --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistIndex) {
     unsigned char *zl = ziplistNew();
@@ -906,7 +906,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistIndex) {
 
 /* This is a benchmark test for ziplistValidateIntegrity.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistValidateIntegrity --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistValidateIntegrity --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistValidateIntegrity) {
     unsigned char *zl = ziplistNew();
@@ -935,7 +935,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistValidateIntegrity) {
 
 /* This is a benchmark test for ziplistCompare with string.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistCompareWithString --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistCompareWithString --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithString) {
     unsigned char *zl = ziplistNew();
@@ -968,7 +968,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithString) {
 
 /* This is a benchmark test for ziplistCompare with number.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistCompareWithNumber --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistBenchmarkziplistCompareWithNumber --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithNumber) {
     unsigned char *zl = ziplistNew();
@@ -1001,7 +1001,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithNumber) {
 
 /* This is a stress test for __ziplistCascadeUpdate.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistStress__ziplistCascadeUpdate --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=ZiplistTest.DISABLED_ziplistStress__ziplistCascadeUpdate --gtest_also_run_disabled_tests
  */
 TEST_F(ZiplistTest, DISABLED_ziplistStress__ziplistCascadeUpdate) {
     char data[ZIP_BIG_PREVLEN];
