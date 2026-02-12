@@ -312,7 +312,7 @@ TEST_F(DictTest, dictDeleteOneKeyTriggerResizeAgain) {
 
 /* This is a benchmark test for dict performance.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=DictTest.DISABLED_dictBenchmark --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=DictTest.DISABLED_dictBenchmark --gtest_also_run_disabled_tests
  */
 TEST_F(DictTest, DISABLED_dictBenchmark) {
     long j;

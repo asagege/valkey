@@ -757,21 +757,21 @@ distclean: clean
 	-(cd ../deps && $(MAKE) distclean)
 	-(cd modules && $(MAKE) clean)
 	-(cd ../tests/modules && $(MAKE) clean)
-	-(cd gtest && $(MAKE) clean)
+	-(cd unit && $(MAKE) clean)
 	-(rm -f .make-*)
-	-(find gtest -type d -name __pycache__ -exec rm -rf {} +)
+	-(find unit -type d -name __pycache__ -exec rm -rf {} +)
 
 .PHONY: distclean
 
 test: $(SERVER_NAME) $(ENGINE_CHECK_AOF_NAME) $(ENGINE_CHECK_RDB_NAME) $(ENGINE_CLI_NAME) $(ENGINE_BENCHMARK_NAME)
 	@(cd ..; VALKEY_PROG_SUFFIX="$(PROG_SUFFIX)" ./runtest)
 
-test-gtest:
-	@(cd gtest && $(MAKE) test-gtest)
+test-unit:
+	@(cd unit && $(MAKE) test-unit)
 
 # valkey-unit-gtests
 $(ENGINE_UNIT_GTESTS): $(ENGINE_LIB_NAME)
-	@(cd gtest && $(MAKE) $(ENGINE_UNIT_GTESTS))
+	@(cd unit && $(MAKE) $(ENGINE_UNIT_GTESTS))
 
 test-modules: $(SERVER_NAME)
 	@(cd ..; ./runtest-moduleapi)

@@ -154,19 +154,19 @@ class Crc64CombineTest : public ::testing::TestWithParam<BenchmarkParams> {
 /* This is a special unit test useful for benchmarking crc64combine performance.
  *
  * To run all benchmark tests:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*' --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*' --gtest_also_run_disabled_tests
  *
  * To run specific buffer size (e.g., 16384 bytes):
- *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*16384*' --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*16384*' --gtest_also_run_disabled_tests
  *
  * To run CSV output tests:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*csv*' --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*csv*' --gtest_also_run_disabled_tests
  *
  * To run combine mode tests:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*combine*' --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*combine*' --gtest_also_run_disabled_tests
  *
  * For infinite looping (equivalent to original -l flag):
- *   ./src/gtest/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*' --gtest_also_run_disabled_tests --gtest_repeat=-1
+ *   ./src/unit/valkey-unit-gtests --gtest_filter='*Crc64CombineTest*' --gtest_also_run_disabled_tests --gtest_repeat=-1
  *
  * Migration notes from original C test:
  *   - Command-line args replaced with test parameters and GoogleTest filters

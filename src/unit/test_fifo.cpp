@@ -194,7 +194,7 @@ static void exerciseFifo(void) {
 
 /* This test is disabled by default because it's a performance comparison test.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=FifoTest.DISABLED_TestFifoComparePerformance --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=FifoTest.DISABLED_TestFifoComparePerformance --gtest_also_run_disabled_tests
  * This test will exercise both FIFO and ADLIST to compare performance.
  * The test will (intentionally) fail, printing the results as failed assertions. */
 TEST_F(FifoTest, DISABLED_TestFifoComparePerformance) {

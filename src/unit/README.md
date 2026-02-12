@@ -21,7 +21,7 @@ every __wrap_foo() command that delegates to the last MockValkey instance
 initialized.
 
 To extend the Valkey classes for mocking further methods, simply add your method
-to 'wrappers.h' and re-run 'make test-gtest' to regenerate the Valkey glue code
+to 'wrappers.h' and re-run 'make test-unit' to regenerate the Valkey glue code
 and run the tests.
 
 Important: All mocking should occur at software boundaries where interfaces are
@@ -52,18 +52,18 @@ Sometimes the developer might want to run only one gtest unit test, or only a
 subset of all unit tests for debugging. We have a few different flavors of
 gtest unit tests that you can filter/play with:
 
-1. Running all gtest unit tests
+1. Running all unit tests
 
    ```bash
-   make test-gtest
+   make test-unit
    ```
 
-3. Running all gtest unit tests in the test class, replace TEST_CLASS_NAME with
+3. Running all unit tests in the test class, replace TEST_CLASS_NAME with
    expected test class name
 
    ```bash
    make valkey-unit-gtests
-   ./src/gtest/valkey-unit-gtests --gtest_filter='TEST_CLASS_NAME.*'
+   ./src/unit/valkey-unit-gtests --gtest_filter='TEST_CLASS_NAME.*'
    ```
 
 4. Running a subset of gtest unit tests in the test class, replace
@@ -72,8 +72,8 @@ gtest unit tests that you can filter/play with:
 
    ```bash
    make valkey-unit-gtests
-   ./src/gtest/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
-   ./src/gtest/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
+   ./src/unit/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
+   ./src/unit/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
    ```
 
 5. Building and running with CMake
@@ -93,7 +93,7 @@ gtest unit tests that you can filter/play with:
 
    ```bash
    make valkey-unit-gtests
-   ./src/gtest/valkey-unit-gtests --gtest_filter=TEST_CLASS_NAME.DISABLED_TEST_NAME --gtest_also_run_disabled_tests
+   ./src/unit/valkey-unit-gtests --gtest_filter=TEST_CLASS_NAME.DISABLED_TEST_NAME --gtest_also_run_disabled_tests
    ```
 
 ## Test flags
@@ -108,5 +108,5 @@ The gtest framework supports several command-line flags to control test behavior
 Example usage:
 
 ```bash
-./src/gtest/valkey-unit-gtests --accurate --large-memory --seed 12345
+./src/unit/valkey-unit-gtests --accurate --large-memory --seed 12345
 ```

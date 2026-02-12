@@ -934,7 +934,7 @@ static void deleteScanFn(void *privdata, void *entry) {
 
 /* This is a test for random entry selection in sparse hashtables.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=HashtableTest.DISABLED_random_entry_sparse_table --gtest_also_run_disabled_tests
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=HashtableTest.DISABLED_random_entry_sparse_table --gtest_also_run_disabled_tests
  */
 TEST_F(HashtableTest, DISABLED_random_entry_sparse_table) {
     randomSeed();

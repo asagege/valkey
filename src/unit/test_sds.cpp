@@ -675,7 +675,7 @@ TEST_F(SdsTest, TestSdsnsplitargs) {
 /* This test is disabled by default because it takes a long time to run (1M iterations).
  * It's used for performance comparison between sdsnsplitargs and sdssplitargs.
  * To run this test explicitly, use:
- *   ./src/gtest/valkey-unit-gtests --gtest_filter=SdsTest.DISABLED_TestSdsnsplitargsBenchmark --gtest_also_run_disabled_tests */
+ *   ./src/unit/valkey-unit-gtests --gtest_filter=SdsTest.DISABLED_TestSdsnsplitargsBenchmark --gtest_also_run_disabled_tests */
 TEST_F(SdsTest, DISABLED_TestSdsnsplitargsBenchmark) {
     char str_with_null_in_middle[] = "arg1\0arg2 arg3";
     size_t str_len = sizeof(str_with_null_in_middle) - 1;

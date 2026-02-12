@@ -155,7 +155,7 @@ include(GoogleTest)
 gtest_discover_tests(valkey-unit-gtests)
 
 # Add custom test target using gtest-parallel
-add_custom_target(test-gtest
+add_custom_target(test-unit
     COMMAND python3 ${CMAKE_SOURCE_DIR}/deps/gtest-parallel/gtest_parallel.py $<TARGET_FILE:valkey-unit-gtests>
     DEPENDS valkey-unit-gtests
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
