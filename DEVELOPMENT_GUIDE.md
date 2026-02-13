@@ -55,7 +55,7 @@ If you are making material changes to a file that has a different license at the
 There isn't a well defined test for what is considered a material change, but a good rule of thumb is that material changes are more than 100 lines of code.
 
 ## Test coverage
-Valkey uses two types of tests: unit tests and integration tests.
+Valkey uses two types of tests: unit and integration tests.
 All contributions should include a test of some form.
 
 Unit tests are present in the `src/unit` directory, and are intended to test individual structures or files.

@@ -60,7 +60,7 @@ ifeq ($(IS_GCC),g++)
 	MORE_WARNINGS += -Wsync-nand -Wtrampolines -Werror=logical-op -Werror=aggressive-loop-optimizations
 	GCC_FLAGS += -fno-var-tracking-assignments
 else
-	# Clang: disable warnings that are errors in unit/gmock
+	# Clang: disable warnings that are errors in gtest/gmock
 	MORE_WARNINGS += -Wno-deprecated-copy
 	MORE_WARNINGS += -Wno-keyword-macro
 endif
