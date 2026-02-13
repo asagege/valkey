@@ -26,7 +26,7 @@ extern long long popcountNEON(void *s, long count);
 
 static long long bitcount(void *s, long count) {
     long long bits = 0;
-    uint8_t *p = static_cast<uint8_t *>(s);
+    uint8_t *p = (uint8_t *)s;
     for (int x = 0; x < count; x += 1) {
         uint8_t val = *(x + p);
         while (val) {
@@ -37,11 +37,10 @@ static long long bitcount(void *s, long count) {
     return bits;
 }
 
-static int test_case(const char *msg, int size) {
-    UNUSED(msg);
+static void test_case(const char *msg, int size) {
     size_t bufsize = size > 0 ? size : 1;
-    uint8_t *buf = static_cast<uint8_t *>(malloc(bufsize));
-    if (!buf) return 1; /* Fatal - can't continue without buffer */
+    uint8_t *buf = (uint8_t *)(malloc(bufsize));
+    ASSERT_NE(buf, nullptr) << msg;
 
     int fuzzing = 1000;
     for (int y = 0; y < fuzzing; y += 1) {
@@ -51,28 +50,18 @@ static int test_case(const char *msg, int size) {
 
         long long expect = bitcount(buf, size);
         long long ret_scalar = popcountScalar(buf, size);
-        if (expect != ret_scalar) {
-            free(buf);
-            return 1;
-        }
+        ASSERT_EQ(expect, ret_scalar) << msg;
 #if HAVE_X86_SIMD
         long long ret_avx2 = popcountAVX2(buf, size);
-        if (expect != ret_avx2) {
-            free(buf);
-            return 1;
-        }
+        ASSERT_EQ(expect, ret_avx2) << msg;
 #endif
 #if HAVE_ARM_NEON
         long long ret_neon = popcountNEON(buf, size);
-        if (expect != ret_neon) {
-            free(buf);
-            return 1;
-        }
+        ASSERT_EQ(expect, ret_neon) << msg;
 #endif
     }
 
     free(buf);
-    return 0;
 }
 
 /* Minimal test fixture */
@@ -80,11 +69,6 @@ class BitopsTest : public ::testing::Test {
 };
 
 TEST_F(BitopsTest, TestPopcount) {
-#define TEST_CASE(MSG, SIZE)                    \
-    if (test_case("Test failed: " MSG, SIZE)) { \
-        FAIL() << "Test failed: " MSG;          \
-    }
-
     /* The AVX2 version divides the array into the following 3 parts.
      *        Part A         Part B       Part C
      * +-----------------+--------------+---------+
@@ -92,12 +76,11 @@ TEST_F(BitopsTest, TestPopcount) {
      * +-----------------+--------------+---------+
      */
     /* So we test the following cases */
-    TEST_CASE("Popcount(Part A)", 8 * 32 * 2);
-    TEST_CASE("Popcount(Part B)", 32 * 2);
-    TEST_CASE("Popcount(Part C)", 2);
-    TEST_CASE("Popcount(Part A + Part B)", 8 * 32 * 7 + 32 * 2);
-    TEST_CASE("Popcount(Part A + Part C)", 8 * 32 * 11 + 7);
-    TEST_CASE("Popcount(Part A + Part B + Part C)", 8 * 32 * 3 + 3 * 32 + 5);
-    TEST_CASE("Popcount(Corner case)", 0);
-#undef TEST_CASE
+    test_case("Popcount(Part A)", 8 * 32 * 2);
+    test_case("Popcount(Part B)", 32 * 2);
+    test_case("Popcount(Part C)", 2);
+    test_case("Popcount(Part A + Part B)", 8 * 32 * 7 + 32 * 2);
+    test_case("Popcount(Part A + Part C)", 8 * 32 * 11 + 7);
+    test_case("Popcount(Part A + Part B + Part C)", 8 * 32 * 3 + 3 * 32 + 5);
+    test_case("Popcount(Corner case)", 0);
 }

@@ -11,7 +11,7 @@ extern "C" {
 }
 
 uint64_t hashTestCallback(const void *key) {
-    return hashtableGenHashFunction(static_cast<const char *>(key), strlen(static_cast<const char *>(key)));
+    return hashtableGenHashFunction((const char *)(key), strlen((const char *)(key)));
 }
 
 uint64_t hashConflictTestCallback(const void *key) {
@@ -20,7 +20,7 @@ uint64_t hashConflictTestCallback(const void *key) {
 }
 
 int cmpTestCallback(const void *k1, const void *k2) {
-    return strcmp(static_cast<const char *>(k1), static_cast<const char *>(k2));
+    return strcmp((const char *)(k1), (const char *)(k2));
 }
 
 void freeTestCallback(void *val) {
@@ -63,7 +63,7 @@ char *stringFromInt(int value) {
     char *s;
 
     len = snprintf(buf, sizeof(buf), "%d", value);
-    s = static_cast<char *>(zmalloc(len + 1));
+    s = (char *)(zmalloc(len + 1));
     memcpy(s, buf, len);
     s[len] = '\0';
     return s;
@@ -81,16 +81,16 @@ TEST_F(KvstoreTest, kvstoreAdd16Keys) {
     kvstore *kvs2 = kvstoreCreate(&KvstoreHashtableTestType, 0, KVSTORE_ALLOCATE_HASHTABLES_ON_DEMAND | KVSTORE_FREE_EMPTY_HASHTABLES);
 
     for (i = 0; i < 16; i++) {
-        EXPECT_TRUE(kvstoreHashtableAdd(kvs0, didx, stringFromInt(i)));
-        EXPECT_TRUE(kvstoreHashtableAdd(kvs1, didx, stringFromInt(i)));
-        EXPECT_TRUE(kvstoreHashtableAdd(kvs2, didx, stringFromInt(i)));
+        ASSERT_TRUE(kvstoreHashtableAdd(kvs0, didx, stringFromInt(i)));
+        ASSERT_TRUE(kvstoreHashtableAdd(kvs1, didx, stringFromInt(i)));
+        ASSERT_TRUE(kvstoreHashtableAdd(kvs2, didx, stringFromInt(i)));
     }
-    EXPECT_EQ(kvstoreHashtableSize(kvs0, didx), 16u);
-    EXPECT_EQ(kvstoreSize(kvs0), 16u);
-    EXPECT_EQ(kvstoreHashtableSize(kvs1, didx), 16u);
-    EXPECT_EQ(kvstoreSize(kvs1), 16u);
-    EXPECT_EQ(kvstoreHashtableSize(kvs2, didx), 16u);
-    EXPECT_EQ(kvstoreSize(kvs2), 16u);
+    ASSERT_EQ(kvstoreHashtableSize(kvs0, didx), 16u);
+    ASSERT_EQ(kvstoreSize(kvs0), 16u);
+    ASSERT_EQ(kvstoreHashtableSize(kvs1, didx), 16u);
+    ASSERT_EQ(kvstoreSize(kvs1), 16u);
+    ASSERT_EQ(kvstoreHashtableSize(kvs2, didx), 16u);
+    ASSERT_EQ(kvstoreSize(kvs2), 16u);
 
     kvstoreRelease(kvs0);
     kvstoreRelease(kvs1);
@@ -117,20 +117,20 @@ TEST_F(KvstoreTest, kvstoreIteratorRemoveAllKeysNoDeleteEmptyHashtable) {
         kvstore *kvs1 = kvstoreCreate(testType, 0, KVSTORE_ALLOCATE_HASHTABLES_ON_DEMAND);
 
         for (i = 0; i < 16; i++) {
-            EXPECT_TRUE(kvstoreHashtableAdd(kvs1, didx, stringFromInt(i)));
+            ASSERT_TRUE(kvstoreHashtableAdd(kvs1, didx, stringFromInt(i)));
         }
 
         kvs_it = kvstoreIteratorInit(kvs1, HASHTABLE_ITER_SAFE);
         while (kvstoreIteratorNext(kvs_it, &key)) {
             curr_slot = kvstoreIteratorGetCurrentHashtableIndex(kvs_it);
-            EXPECT_TRUE(kvstoreHashtableDelete(kvs1, curr_slot, key));
+            ASSERT_TRUE(kvstoreHashtableDelete(kvs1, curr_slot, key));
         }
         kvstoreIteratorRelease(kvs_it);
 
         hashtable *ht = kvstoreGetHashtable(kvs1, didx);
-        EXPECT_NE(ht, nullptr);
-        EXPECT_EQ(kvstoreHashtableSize(kvs1, didx), 0u);
-        EXPECT_EQ(kvstoreSize(kvs1), 0u);
+        ASSERT_NE(ht, nullptr);
+        ASSERT_EQ(kvstoreHashtableSize(kvs1, didx), 0u);
+        ASSERT_EQ(kvstoreSize(kvs1), 0u);
 
         kvstoreRelease(kvs1);
     }
@@ -146,13 +146,13 @@ TEST_F(KvstoreTest, kvstoreIteratorRemoveAllKeysDeleteEmptyHashtable) {
     kvstore *kvs2 = kvstoreCreate(&KvstoreHashtableTestType, 0, KVSTORE_ALLOCATE_HASHTABLES_ON_DEMAND | KVSTORE_FREE_EMPTY_HASHTABLES);
 
     for (i = 0; i < 16; i++) {
-        EXPECT_TRUE(kvstoreHashtableAdd(kvs2, didx, stringFromInt(i)));
+        ASSERT_TRUE(kvstoreHashtableAdd(kvs2, didx, stringFromInt(i)));
     }
 
     kvs_it = kvstoreIteratorInit(kvs2, HASHTABLE_ITER_SAFE);
     while (kvstoreIteratorNext(kvs_it, &key)) {
         curr_slot = kvstoreIteratorGetCurrentHashtableIndex(kvs_it);
-        EXPECT_TRUE(kvstoreHashtableDelete(kvs2, curr_slot, key));
+        ASSERT_TRUE(kvstoreHashtableDelete(kvs2, curr_slot, key));
     }
     kvstoreIteratorRelease(kvs_it);
 
@@ -161,9 +161,9 @@ TEST_F(KvstoreTest, kvstoreIteratorRemoveAllKeysDeleteEmptyHashtable) {
     }
 
     hashtable *ht = kvstoreGetHashtable(kvs2, didx);
-    EXPECT_EQ(ht, nullptr);
-    EXPECT_EQ(kvstoreHashtableSize(kvs2, didx), 0u);
-    EXPECT_EQ(kvstoreSize(kvs2), 0u);
+    ASSERT_EQ(ht, nullptr);
+    ASSERT_EQ(kvstoreHashtableSize(kvs2, didx), 0u);
+    ASSERT_EQ(kvstoreSize(kvs2), 0u);
 
     kvstoreRelease(kvs2);
 }
@@ -177,19 +177,19 @@ TEST_F(KvstoreTest, kvstoreHashtableIteratorRemoveAllKeysNoDeleteEmptyHashtable)
     kvstore *kvs1 = kvstoreCreate(&KvstoreHashtableTestType, 0, KVSTORE_ALLOCATE_HASHTABLES_ON_DEMAND);
 
     for (i = 0; i < 16; i++) {
-        EXPECT_TRUE(kvstoreHashtableAdd(kvs1, didx, stringFromInt(i)));
+        ASSERT_TRUE(kvstoreHashtableAdd(kvs1, didx, stringFromInt(i)));
     }
 
     kvs_di = kvstoreGetHashtableIterator(kvs1, didx, HASHTABLE_ITER_SAFE);
     while (kvstoreHashtableIteratorNext(kvs_di, &key)) {
-        EXPECT_TRUE(kvstoreHashtableDelete(kvs1, didx, key));
+        ASSERT_TRUE(kvstoreHashtableDelete(kvs1, didx, key));
     }
     kvstoreReleaseHashtableIterator(kvs_di);
 
     hashtable *ht = kvstoreGetHashtable(kvs1, didx);
-    EXPECT_NE(ht, nullptr);
-    EXPECT_EQ(kvstoreHashtableSize(kvs1, didx), 0u);
-    EXPECT_EQ(kvstoreSize(kvs1), 0u);
+    ASSERT_NE(ht, nullptr);
+    ASSERT_EQ(kvstoreHashtableSize(kvs1, didx), 0u);
+    ASSERT_EQ(kvstoreSize(kvs1), 0u);
 
     kvstoreRelease(kvs1);
 }
@@ -203,19 +203,19 @@ TEST_F(KvstoreTest, kvstoreHashtableIteratorRemoveAllKeysDeleteEmptyHashtable) {
     kvstore *kvs2 = kvstoreCreate(&KvstoreHashtableTestType, 0, KVSTORE_ALLOCATE_HASHTABLES_ON_DEMAND | KVSTORE_FREE_EMPTY_HASHTABLES);
 
     for (i = 0; i < 16; i++) {
-        EXPECT_TRUE(kvstoreHashtableAdd(kvs2, didx, stringFromInt(i)));
+        ASSERT_TRUE(kvstoreHashtableAdd(kvs2, didx, stringFromInt(i)));
     }
 
     kvs_di = kvstoreGetHashtableIterator(kvs2, didx, HASHTABLE_ITER_SAFE);
     while (kvstoreHashtableIteratorNext(kvs_di, &key)) {
-        EXPECT_TRUE(kvstoreHashtableDelete(kvs2, didx, key));
+        ASSERT_TRUE(kvstoreHashtableDelete(kvs2, didx, key));
     }
     kvstoreReleaseHashtableIterator(kvs_di);
 
     hashtable *ht = kvstoreGetHashtable(kvs2, didx);
-    EXPECT_EQ(ht, nullptr);
-    EXPECT_EQ(kvstoreHashtableSize(kvs2, didx), 0u);
-    EXPECT_EQ(kvstoreSize(kvs2), 0u);
+    ASSERT_EQ(ht, nullptr);
+    ASSERT_EQ(kvstoreHashtableSize(kvs2, didx), 0u);
+    ASSERT_EQ(kvstoreSize(kvs2), 0u);
 
     kvstoreRelease(kvs2);
 }
@@ -223,11 +223,11 @@ TEST_F(KvstoreTest, kvstoreHashtableIteratorRemoveAllKeysDeleteEmptyHashtable) {
 TEST_F(KvstoreTest, kvstoreHashtableExpand) {
     kvstore *kvs = kvstoreCreate(&KvstoreHashtableTestType, 0, KVSTORE_ALLOCATE_HASHTABLES_ON_DEMAND | KVSTORE_FREE_EMPTY_HASHTABLES);
 
-    EXPECT_EQ(kvstoreGetHashtable(kvs, 0), nullptr);
-    EXPECT_TRUE(kvstoreHashtableExpand(kvs, 0, 10000));
-    EXPECT_NE(kvstoreGetHashtable(kvs, 0), nullptr);
-    EXPECT_GT(kvstoreBuckets(kvs), 0u);
-    EXPECT_EQ(kvstoreBuckets(kvs), kvstoreHashtableBuckets(kvs, 0));
+    ASSERT_EQ(kvstoreGetHashtable(kvs, 0), nullptr);
+    ASSERT_TRUE(kvstoreHashtableExpand(kvs, 0, 10000));
+    ASSERT_NE(kvstoreGetHashtable(kvs, 0), nullptr);
+    ASSERT_GT(kvstoreBuckets(kvs), 0u);
+    ASSERT_EQ(kvstoreBuckets(kvs), kvstoreHashtableBuckets(kvs, 0));
 
     kvstoreRelease(kvs);
 }

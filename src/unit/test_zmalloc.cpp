@@ -20,22 +20,22 @@ TEST_F(ZmallocTest, TestZmallocAllocReallocCallocAndFree) {
 
     ptr = zmalloc(123);
     printf("Allocated 123 bytes; used: %lld\n",
-           static_cast<long long>(zmalloc_used_memory()) - static_cast<long long>(used_memory_before));
+           (long long)(zmalloc_used_memory()) - (used_memory_before));
 
     ptr = zrealloc(ptr, 456);
     printf("Reallocated to 456 bytes; used: %lld\n",
-           static_cast<long long>(zmalloc_used_memory()) - static_cast<long long>(used_memory_before));
+           (long long)(zmalloc_used_memory()) - (used_memory_before));
 
     ptr2 = zcalloc(123);
     printf("Callocated 123 bytes; used: %lld\n",
-           static_cast<long long>(zmalloc_used_memory()) - static_cast<long long>(used_memory_before));
+           (long long)(zmalloc_used_memory()) - (used_memory_before));
 
     zfree(ptr);
     zfree(ptr2);
     printf("Freed pointers; used: %lld\n",
-           static_cast<long long>(zmalloc_used_memory()) - static_cast<long long>(used_memory_before));
+           (long long)(zmalloc_used_memory()) - (used_memory_before));
 
-    EXPECT_EQ(zmalloc_used_memory(), used_memory_before);
+    ASSERT_EQ(zmalloc_used_memory(), used_memory_before);
 }
 
 TEST_F(ZmallocTest, TestZmallocAllocZeroByteAndFree) {
@@ -46,5 +46,5 @@ TEST_F(ZmallocTest, TestZmallocAllocZeroByteAndFree) {
     printf("Allocated 0 bytes; used: %zu\n", zmalloc_used_memory());
     zfree(ptr);
 
-    EXPECT_EQ(zmalloc_used_memory(), used_memory_before);
+    ASSERT_EQ(zmalloc_used_memory(), used_memory_before);
 }

@@ -27,12 +27,12 @@ static long long _ustime(void) {
     long long ust;
 
     gettimeofday(&tv, nullptr);
-    ust = static_cast<long long>(tv.tv_sec) * 1000000;
+    ust = (long long)(tv.tv_sec) * 1000000;
     ust += tv.tv_usec;
     return ust;
 }
 
-static int bench_crc64(unsigned char *data, uint64_t size, long long passes, uint64_t check, const char *name, int csv) {
+static int bench_crc64(unsigned char *data, uint64_t size, long long passes, uint64_t check, char *name, int csv) {
     uint64_t min = size, hash = 0;
     long long original_start = _ustime(), original_end;
     for (long long i = passes; i > 0; i--) {
@@ -52,7 +52,7 @@ static int bench_crc64(unsigned char *data, uint64_t size, long long passes, uin
 
 const uint64_t BENCH_RPOLY = UINT64_C(0x95ac9329ac4bc9b5);
 
-static void bench_combine(const char *label, uint64_t size, uint64_t expect, int csv) {
+static void bench_combine(char *label, uint64_t size, uint64_t expect, int csv) {
     uint64_t min = size, start = expect, thash = expect ^ (expect >> 17);
     long long original_start = _ustime(), original_end;
     for (int i = 0; i < 1000; i++) {
@@ -113,19 +113,19 @@ class Crc64CombineTest : public ::testing::TestWithParam<BenchmarkParams> {
 
         /* get the single-character version for single-byte Redis behavior */
         set_crc64_cutoffs(0, size + 1);
-        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crc_1byte", params.csv_output), 0);
+        ASSERT_EQ(bench_crc64(data, size, passes, expect, (char *)"crc_1byte", params.csv_output), 0);
 
         set_crc64_cutoffs(size + 1, size + 1);
         /* run with 8-byte "single" path, crcfaster */
-        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crcspeed", params.csv_output), 0);
+        ASSERT_EQ(bench_crc64(data, size, passes, expect, (char *)"crcspeed", params.csv_output), 0);
 
         /* run with dual 8-byte paths */
         set_crc64_cutoffs(1, size + 1);
-        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crcdual", params.csv_output), 0);
+        ASSERT_EQ(bench_crc64(data, size, passes, expect, (char *)"crcdual", params.csv_output), 0);
 
         /* run with tri 8-byte paths */
         set_crc64_cutoffs(1, 1);
-        EXPECT_EQ(bench_crc64(data, size, passes, expect, "crctri", params.csv_output), 0);
+        ASSERT_EQ(bench_crc64(data, size, passes, expect, (char *)"crctri", params.csv_output), 0);
     }
 
     void RunCombineBenchmarks(uint64_t size, uint64_t expect) {
@@ -139,15 +139,15 @@ class Crc64CombineTest : public ::testing::TestWithParam<BenchmarkParams> {
         init_end = (init_end - init_start) * 1000;
         if (params.csv_output) {
             printf("operation,size,nanoseconds\n");
-            printf("init_64,%" PRIu64 ",%" PRIu64 "\n", INIT_SIZE, static_cast<uint64_t>(init_end));
+            printf("init_64,%" PRIu64 ",%" PRIu64 "\n", INIT_SIZE, (uint64_t)(init_end));
         } else {
-            printf("init_64 size=%" PRIu64 " in %" PRIu64 " nsec\n", INIT_SIZE, static_cast<uint64_t>(init_end));
+            printf("init_64 size=%" PRIu64 " in %" PRIu64 " nsec\n", INIT_SIZE, (uint64_t)(init_end));
         }
         /* use the hash itself as the size (unpredictable) */
-        bench_combine("hash_as_size_combine", size, expect, params.csv_output);
+        bench_combine((char *)"hash_as_size_combine", size, expect, params.csv_output);
         /* let's do something big (predictable, so fast) */
-        bench_combine("largest_combine", INIT_SIZE, expect, params.csv_output);
-        bench_combine("combine", size, expect, params.csv_output);
+        bench_combine((char *)"largest_combine", INIT_SIZE, expect, params.csv_output);
+        bench_combine((char *)"combine", size, expect, params.csv_output);
     }
 };
 
@@ -182,8 +182,8 @@ TEST_P(Crc64CombineTest, DISABLED_BenchmarkCrc64) {
     unsigned char *data = nullptr;
     uint64_t passes = 0;
     if (params.buffer_size) {
-        data = static_cast<unsigned char *>(zmalloc(params.buffer_size));
-        genBenchmarkRandomData(reinterpret_cast<char *>(data), params.buffer_size);
+        data = (unsigned char *)(zmalloc(params.buffer_size));
+        genBenchmarkRandomData((char *)(data), params.buffer_size);
         /* We want to hash about 1 gig of data in total, looped, to get a good
          * idea of our performance. */
         passes = CalculatePasses(params.buffer_size);

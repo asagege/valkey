@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     valgrind = hasFlag(argc, argv, "--valgrind");
     seed = getFlagValue(argc, argv, "--seed");
     if (seed) {
-        unsigned int seed_value = static_cast<unsigned int>(atoi(seed));
+        unsigned int seed_value = (unsigned int)(atoi(seed));
         srandom(seed_value);
         srand(seed_value);
 
@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
         // First hash
         sha256_init(&ctx);
-        sha256_update(&ctx, reinterpret_cast<const unsigned char *>(seed), strlen(seed));
+        sha256_update(&ctx, (const unsigned char *)(seed), strlen(seed));
         sha256_final(&ctx, hash);
 
         // Convert first hash to hex (32 bytes = 64 hex chars)
@@ -77,5 +77,9 @@ int main(int argc, char **argv) {
 
     // The following line must be executed to initialize GoogleTest before running the tests.
     ::testing::InitGoogleMock(&argc, argv);
-    return RUN_ALL_TESTS();
+    int result = RUN_ALL_TESTS();
+    if (result == 0) {
+        printf("\033[32mAll UNIT TESTS PASSED!\033[0m\n");
+    }
+    return result;
 }

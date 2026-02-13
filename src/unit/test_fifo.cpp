@@ -18,11 +18,11 @@ extern "C" {
 }
 
 static inline void *intToPointer(intptr_t i) {
-    return reinterpret_cast<void *>(i);
+    return (void *)(i);
 }
 
 static inline intptr_t pointerToInt(void *p) {
-    return reinterpret_cast<intptr_t>(p);
+    return (intptr_t)(p);
 }
 
 class FifoTest : public ::testing::Test {
@@ -168,7 +168,7 @@ static void exerciseList(void) {
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
         listAddNodeTail(q, intToPointer(i));
     }
-    EXPECT_EQ(listLength(q), static_cast<unsigned>(LIST_ITEMS));
+    EXPECT_EQ(listLength(q), (unsigned)(LIST_ITEMS));
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
         listNode *node = listFirst(q);
         listDelNode(q, node);
@@ -212,6 +212,6 @@ TEST_F(FifoTest, DISABLED_TestFifoComparePerformance) {
     for (int i = 0; i < iterations; i++) exerciseFifo();
     long fifoMs = elapsedMs(timer);
 
-    double percentImprovement = static_cast<double>(listMs - fifoMs) * 100.0 / listMs;
+    double percentImprovement = (double)(listMs - fifoMs) * 100.0 / listMs;
     printf("List: %ld ms, FIFO: %ld ms, Improvement: %.2f%%\n", listMs, fifoMs, percentImprovement);
 }

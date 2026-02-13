@@ -74,7 +74,7 @@ typedef struct ht {
 
 /* Create a new hash table. */
 static testHashtable *htNew(void) {
-    testHashtable *ht = static_cast<testHashtable *>(zcalloc(sizeof(*ht)));
+    testHashtable *ht = (testHashtable *)(zcalloc(sizeof(*ht)));
     ht->numele = 0;
     return ht;
 }
@@ -107,8 +107,8 @@ static int htAdd(testHashtable *t, unsigned char *s, size_t len, void *data) {
     htNode *n = htRawLookup(t, s, len, &hash, nullptr);
 
     if (!n) {
-        n = static_cast<htNode *>(zmalloc(sizeof(*n)));
-        n->key = static_cast<unsigned char *>(zmalloc(len));
+        n = (htNode *)(zmalloc(sizeof(*n)));
+        n->key = (unsigned char *)(zmalloc(len));
         memcpy(n->key, s, len);
         n->keylen = len;
         n->data = data;
@@ -136,7 +136,7 @@ static int htRem(testHashtable *t, unsigned char *s, size_t len) {
     return 1;
 }
 
-static void *htNotFound = reinterpret_cast<void *>(const_cast<char *>("ht-not-found"));
+static void *htNotFound = (void *)((char *)("ht-not-found"));
 
 /* Find an element inside the hash table. Returns htNotFound if the
  * element is not there, otherwise returns the associated value. */
@@ -176,7 +176,7 @@ static uint32_t int2int(uint32_t input) {
         r = l ^ F;
         l = nl;
     }
-    return (static_cast<uint32_t>(r) << 16) | l;
+    return ((uint32_t)(r) << 16) | l;
 }
 
 /* Turn an uint32_t integer into an alphanumerical key and return its
@@ -218,7 +218,7 @@ static size_t int2alphakey(char *s, size_t maxlen, uint32_t i) {
 #define KEY_CHAIN 5
 static size_t int2key(char *s, size_t maxlen, uint32_t i, int mode) {
     if (mode == KEY_INT) {
-        return snprintf(s, maxlen, "%lu", static_cast<unsigned long>(i));
+        return snprintf(s, maxlen, "%lu", (unsigned long)(i));
     } else if (mode == KEY_UNIQUE_ALPHA) {
         if (maxlen > 16) maxlen = 16;
         i = int2int(i);
@@ -263,9 +263,9 @@ int fuzzTest(int keymode, size_t count, double addprob, double remprob) {
         uint32_t keylen;
 
         /* Insert element. */
-        if (static_cast<double>(genrand64_int64()) / RAND_MAX < addprob) {
-            keylen = int2key(reinterpret_cast<char *>(key), sizeof(key), i, keymode);
-            void *val = reinterpret_cast<void *>(static_cast<unsigned long>(genrand64_int64()));
+        if ((double)(genrand64_int64()) / RAND_MAX < addprob) {
+            keylen = int2key((char *)(key), sizeof(key), i, keymode);
+            void *val = (void *)((unsigned long)(genrand64_int64()));
             /* Stress NULL values more often, they use a special encoding. */
             if (!(genrand64_int64() % 100)) val = nullptr;
             int retval1 = htAdd(ht, key, keylen, val);
@@ -277,14 +277,14 @@ int fuzzTest(int keymode, size_t count, double addprob, double remprob) {
         }
 
         /* Remove element. */
-        if (static_cast<double>(genrand64_int64()) / RAND_MAX < remprob) {
-            keylen = int2key(reinterpret_cast<char *>(key), sizeof(key), i, keymode);
+        if ((double)(genrand64_int64()) / RAND_MAX < remprob) {
+            keylen = int2key((char *)(key), sizeof(key), i, keymode);
             int retval1 = htRem(ht, key, keylen);
             int retval2 = raxRemove(rax_tree, key, keylen, nullptr);
             if (retval1 != retval2) {
                 printf("Fuzz: key deletion of '%.*s' reported mismatching "
                        "value in HT=%d RAX=%d\n",
-                       static_cast<int>(keylen), reinterpret_cast<char *>(key), retval1, retval2);
+                       (int)(keylen), (char *)(key), retval1, retval2);
                 return 1;
             }
         }
@@ -292,11 +292,11 @@ int fuzzTest(int keymode, size_t count, double addprob, double remprob) {
 
     /* Check that count matches. */
     if (ht->numele != raxSize(rax_tree)) {
-        printf("Fuzz: HT / RAX keys count mismatch: %lu vs %lu\n", static_cast<unsigned long>(ht->numele),
-               static_cast<unsigned long>(raxSize(rax_tree)));
+        printf("Fuzz: HT / RAX keys count mismatch: %lu vs %lu\n", (unsigned long)(ht->numele),
+               (unsigned long)(raxSize(rax_tree)));
         return 1;
     }
-    printf("%lu elements inserted\n", static_cast<unsigned long>(ht->numele));
+    printf("%lu elements inserted\n", (unsigned long)(ht->numele));
 
     /* Check that elements match. */
     raxIterator iter;
@@ -311,7 +311,7 @@ int fuzzTest(int keymode, size_t count, double addprob, double remprob) {
         if (val1 != val2) {
             printf("Fuzz: HT=%p, RAX=%p value do not match "
                    "for key %.*s\n",
-                   val1, val2, static_cast<int>(iter.key_len), reinterpret_cast<char *>(iter.key));
+                   val1, val2, (int)(iter.key_len), (char *)(iter.key));
             return 1;
         }
         numkeys++;
@@ -319,8 +319,8 @@ int fuzzTest(int keymode, size_t count, double addprob, double remprob) {
 
     /* Check that the iterator reported all the elements. */
     if (ht->numele != numkeys) {
-        printf("Fuzz: the iterator reported %lu keys instead of %lu\n", static_cast<unsigned long>(numkeys),
-               static_cast<unsigned long>(ht->numele));
+        printf("Fuzz: the iterator reported %lu keys instead of %lu\n", (unsigned long)(numkeys),
+               (unsigned long)(ht->numele));
         return 1;
     }
 
@@ -351,8 +351,8 @@ int fuzzTestCluster(size_t count, double addprob, double remprob) {
 
     /* This is our template to generate keys. The first two bytes will
      * be replaced with the binary redis cluster hash slot. */
-    keylen = snprintf(reinterpret_cast<char *>(key), sizeof(key), "__geocode:2e68e5df3624");
-    char *cset = const_cast<char *>("0123456789abcdef");
+    keylen = snprintf((char *)(key), sizeof(key), "__geocode:2e68e5df3624");
+    char *cset = (char *)("0123456789abcdef");
 
     for (unsigned long j = 0; j < count; j++) {
         /* Generate a random key by altering our template key. */
@@ -369,18 +369,18 @@ int fuzzTestCluster(size_t count, double addprob, double remprob) {
 
         /* Compute the Redis Cluster hash slot to set the first two
          * binary bytes of the key. */
-        int hashslot = crc16(reinterpret_cast<char *>(key), keylen) & 0x3FFF;
+        int hashslot = crc16((char *)(key), keylen) & 0x3FFF;
         key[0] = (hashslot >> 8) & 0xff;
         key[1] = hashslot & 0xff;
 
         /* Insert element. */
-        if (static_cast<double>(genrand64_int64()) / RAND_MAX < addprob) {
+        if ((double)(genrand64_int64()) / RAND_MAX < addprob) {
             raxInsert(rax_tree, key, keylen, nullptr, nullptr);
             EXPECT_EQ(raxAllocSize(rax_tree) + used_memory_before, zmalloc_used_memory());
         }
 
         /* Remove element. */
-        if (static_cast<double>(genrand64_int64()) / RAND_MAX < remprob) {
+        if ((double)(genrand64_int64()) / RAND_MAX < remprob) {
             raxRemove(rax_tree, key, keylen, nullptr);
             EXPECT_EQ(raxAllocSize(rax_tree) + used_memory_before, zmalloc_used_memory());
         }
@@ -410,8 +410,8 @@ int compareAB(const unsigned char *keya, size_t lena, const unsigned char *keyb,
 }
 
 int compareArrayItems(const void *aptr, const void *bptr) {
-    const arrayItem *a = static_cast<const arrayItem *>(aptr);
-    const arrayItem *b = static_cast<const arrayItem *>(bptr);
+    const arrayItem *a = (const arrayItem *)(aptr);
+    const arrayItem *b = (const arrayItem *)(bptr);
     return compareAB(a->key, a->key_len, b->key, b->key_len);
 }
 
@@ -446,17 +446,17 @@ int arraySeek(arrayItem *array, int count, unsigned char *key, size_t len, char 
 int iteratorFuzzTest(int keymode, size_t count) {
     count = genrand64_int64() % count;
     rax *rax_tree = raxNew();
-    arrayItem *array = static_cast<arrayItem *>(zmalloc(sizeof(arrayItem) * count));
+    arrayItem *array = (arrayItem *)(zmalloc(sizeof(arrayItem) * count));
 
     /* Fill a radix tree and a linear array with some data. */
     unsigned char key[1024];
     size_t j = 0;
     for (size_t i = 0; i < count; i++) {
-        uint32_t keylen = int2key(reinterpret_cast<char *>(key), sizeof(key), i, keymode);
-        void *val = reinterpret_cast<void *>(static_cast<unsigned long>(htHash(key, keylen)));
+        uint32_t keylen = int2key((char *)(key), sizeof(key), i, keymode);
+        void *val = (void *)((unsigned long)(htHash(key, keylen)));
 
         if (raxInsert(rax_tree, key, keylen, val, nullptr)) {
-            array[j].key = static_cast<unsigned char *>(zmalloc(keylen));
+            array[j].key = (unsigned char *)(zmalloc(keylen));
             array[j].key_len = keylen;
             memcpy(array[j].key, key, keylen);
             j++;
@@ -468,11 +468,11 @@ int iteratorFuzzTest(int keymode, size_t count) {
     qsort(array, count, sizeof(arrayItem), compareArrayItems);
 
     /* Perform a random seek operation. */
-    uint32_t keylen = int2key(reinterpret_cast<char *>(key), sizeof(key), genrand64_int64() % (count ? count : 1), keymode);
+    uint32_t keylen = int2key((char *)(key), sizeof(key), genrand64_int64() % (count ? count : 1), keymode);
     raxIterator iter;
     raxStart(&iter, rax_tree);
-    char *seekops[] = {const_cast<char *>("=="), const_cast<char *>(">="), const_cast<char *>("<="),
-                       const_cast<char *>(">"), const_cast<char *>("<"), const_cast<char *>("^"), const_cast<char *>("$")};
+    char *seekops[] = {(char *)("=="), (char *)(">="), (char *)("<="),
+                       (char *)(">"), (char *)("<"), (char *)("^"), (char *)("$")};
     char *seekop = seekops[genrand64_int64() % 7];
     raxSeek(&iter, seekop, key, keylen);
     int seekidx = arraySeek(array, count, key, keylen, seekop);
@@ -487,7 +487,7 @@ int iteratorFuzzTest(int keymode, size_t count) {
 
         array_res = (seekidx == -1) ? 0 : 1;
         if (array_res) {
-            if (next && seekidx == static_cast<signed>(count)) array_res = 0;
+            if (next && seekidx == (signed)(count)) array_res = 0;
             if (!next && seekidx == -1) array_res = 0;
             if (array_res != 0) {
                 array_key = array[seekidx].key;
@@ -522,13 +522,13 @@ int iteratorFuzzTest(int keymode, size_t count) {
                 printf("BUG SEEKING: %s %.*s\n", seekop, keylen, key);
                 printf("%.*s (iter) VS %.*s (array) next=%d idx=%d "
                        "count=%lu keymode=%d\n",
-                       static_cast<int>(iter.key_len), reinterpret_cast<char *>(iter.key),
-                       static_cast<int>(array_key_len), reinterpret_cast<char *>(array_key), next, seekidx,
-                       static_cast<unsigned long>(count), keymode);
+                       (int)(iter.key_len), (char *)(iter.key),
+                       (int)(array_key_len), (char *)(array_key), next, seekidx,
+                       (unsigned long)(count), keymode);
                 if (count < 500) {
                     printf("\n");
                     for (unsigned int k = 0; k < count; k++) {
-                        printf("%d) '%.*s'\n", k, static_cast<int>(array[k].key_len), array[k].key);
+                        printf("%d) '%.*s'\n", k, (int)(array[k].key_len), array[k].key);
                     }
                 }
                 exit(1);
@@ -559,16 +559,16 @@ TEST_F(RaxTest, raxRandomWalk) {
     size_t used_memory_before = zmalloc_used_memory();
 
     rax *t = raxNew();
-    char *toadd[] = {const_cast<char *>("alligator"), const_cast<char *>("alien"), const_cast<char *>("byword"),
-                     const_cast<char *>("chromodynamic"), const_cast<char *>("romane"), const_cast<char *>("romanus"),
-                     const_cast<char *>("romulus"), const_cast<char *>("rubens"), const_cast<char *>("ruber"),
-                     const_cast<char *>("rubicon"), const_cast<char *>("rubicundus"), const_cast<char *>("all"),
-                     const_cast<char *>("rub"), const_cast<char *>("by"), nullptr};
+    char *toadd[] = {(char *)("alligator"), (char *)("alien"), (char *)("byword"),
+                     (char *)("chromodynamic"), (char *)("romane"), (char *)("romanus"),
+                     (char *)("romulus"), (char *)("rubens"), (char *)("ruber"),
+                     (char *)("rubicon"), (char *)("rubicundus"), (char *)("all"),
+                     (char *)("rub"), (char *)("by"), nullptr};
 
     long numele;
     for (numele = 0; toadd[numele] != nullptr; numele++) {
-        raxInsert(t, reinterpret_cast<unsigned char *>(toadd[numele]), strlen(toadd[numele]),
-                  reinterpret_cast<void *>(numele), nullptr);
+        raxInsert(t, (unsigned char *)(toadd[numele]), strlen(toadd[numele]),
+                  (void *)(numele), nullptr);
         EXPECT_EQ(raxAllocSize(t) + used_memory_before, zmalloc_used_memory());
     }
 
@@ -599,18 +599,18 @@ TEST_F(RaxTest, raxIteratorUnitTests) {
     size_t used_memory_before = zmalloc_used_memory();
 
     rax *t = raxNew();
-    char *toadd[] = {const_cast<char *>("alligator"), const_cast<char *>("alien"), const_cast<char *>("byword"),
-                     const_cast<char *>("chromodynamic"), const_cast<char *>("romane"), const_cast<char *>("romanus"),
-                     const_cast<char *>("romulus"), const_cast<char *>("rubens"), const_cast<char *>("ruber"),
-                     const_cast<char *>("rubicon"), const_cast<char *>("rubicundus"), const_cast<char *>("all"),
-                     const_cast<char *>("rub"), const_cast<char *>("by"), nullptr};
+    char *toadd[] = {(char *)("alligator"), (char *)("alien"), (char *)("byword"),
+                     (char *)("chromodynamic"), (char *)("romane"), (char *)("romanus"),
+                     (char *)("romulus"), (char *)("rubens"), (char *)("ruber"),
+                     (char *)("rubicon"), (char *)("rubicundus"), (char *)("all"),
+                     (char *)("rub"), (char *)("by"), nullptr};
 
     long items = 0;
     while (toadd[items] != nullptr) items++;
 
     for (long i = 0; i < items; i++) {
-        raxInsert(t, reinterpret_cast<unsigned char *>(toadd[i]), strlen(toadd[i]),
-                  reinterpret_cast<void *>(i), nullptr);
+        raxInsert(t, (unsigned char *)(toadd[i]), strlen(toadd[i]),
+                  (void *)(i), nullptr);
         EXPECT_EQ(raxAllocSize(t) + used_memory_before, zmalloc_used_memory());
     }
 
@@ -623,34 +623,34 @@ TEST_F(RaxTest, raxIteratorUnitTests) {
         char *seekop;
         char *expected;
     } tests[] = {/* Seek value. */ /* Expected result. */
-                 {const_cast<char *>("rpxxx"), 5, const_cast<char *>("<="), const_cast<char *>("romulus")},
-                 {const_cast<char *>("rom"), 3, const_cast<char *>(">="), const_cast<char *>("romane")},
-                 {const_cast<char *>("rub"), 3, const_cast<char *>(">="), const_cast<char *>("rub")},
-                 {const_cast<char *>("rub"), 3, const_cast<char *>(">"), const_cast<char *>("rubens")},
-                 {const_cast<char *>("rub"), 3, const_cast<char *>("<"), const_cast<char *>("romulus")},
-                 {const_cast<char *>("rom"), 3, const_cast<char *>(">"), const_cast<char *>("romane")},
-                 {const_cast<char *>("chro"), 4, const_cast<char *>(">"), const_cast<char *>("chromodynamic")},
-                 {const_cast<char *>("chro"), 4, const_cast<char *>("<"), const_cast<char *>("byword")},
-                 {const_cast<char *>("chromz"), 6, const_cast<char *>("<"), const_cast<char *>("chromodynamic")},
-                 {const_cast<char *>(""), 0, const_cast<char *>("^"), const_cast<char *>("alien")},
-                 {const_cast<char *>("zorro"), 5, const_cast<char *>("<="), const_cast<char *>("rubicundus")},
-                 {const_cast<char *>("zorro"), 5, const_cast<char *>("<"), const_cast<char *>("rubicundus")},
-                 {const_cast<char *>("zorro"), 5, const_cast<char *>("<"), const_cast<char *>("rubicundus")},
-                 {const_cast<char *>(""), 0, const_cast<char *>("$"), const_cast<char *>("rubicundus")},
-                 {const_cast<char *>("ro"), 2, const_cast<char *>(">="), const_cast<char *>("romane")},
-                 {const_cast<char *>("zo"), 2, const_cast<char *>(">"), nullptr},
-                 {const_cast<char *>("zo"), 2, const_cast<char *>("=="), nullptr},
-                 {const_cast<char *>("romane"), 6, const_cast<char *>("=="), const_cast<char *>("romane")}};
+                 {(char *)("rpxxx"), 5, (char *)("<="), (char *)("romulus")},
+                 {(char *)("rom"), 3, (char *)(">="), (char *)("romane")},
+                 {(char *)("rub"), 3, (char *)(">="), (char *)("rub")},
+                 {(char *)("rub"), 3, (char *)(">"), (char *)("rubens")},
+                 {(char *)("rub"), 3, (char *)("<"), (char *)("romulus")},
+                 {(char *)("rom"), 3, (char *)(">"), (char *)("romane")},
+                 {(char *)("chro"), 4, (char *)(">"), (char *)("chromodynamic")},
+                 {(char *)("chro"), 4, (char *)("<"), (char *)("byword")},
+                 {(char *)("chromz"), 6, (char *)("<"), (char *)("chromodynamic")},
+                 {(char *)(""), 0, (char *)("^"), (char *)("alien")},
+                 {(char *)("zorro"), 5, (char *)("<="), (char *)("rubicundus")},
+                 {(char *)("zorro"), 5, (char *)("<"), (char *)("rubicundus")},
+                 {(char *)("zorro"), 5, (char *)("<"), (char *)("rubicundus")},
+                 {(char *)(""), 0, (char *)("$"), (char *)("rubicundus")},
+                 {(char *)("ro"), 2, (char *)(">="), (char *)("romane")},
+                 {(char *)("zo"), 2, (char *)(">"), nullptr},
+                 {(char *)("zo"), 2, (char *)("=="), nullptr},
+                 {(char *)("romane"), 6, (char *)("=="), (char *)("romane")}};
 
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
-        raxSeek(&iter, tests[i].seekop, reinterpret_cast<unsigned char *>(tests[i].seek), tests[i].seeklen);
+        raxSeek(&iter, tests[i].seekop, (unsigned char *)(tests[i].seek), tests[i].seeklen);
         int retval = raxNext(&iter);
 
         if (tests[i].expected != nullptr) {
             EXPECT_TRUE(strlen(tests[i].expected) == iter.key_len &&
                         memcmp(tests[i].expected, iter.key, iter.key_len) == 0)
                 << "Iterator unit test error: test " << i << ", " << tests[i].expected
-                << " expected, " << std::string(reinterpret_cast<char *>(iter.key), iter.key_len) << " reported";
+                << " expected, " << std::string((char *)(iter.key), iter.key_len) << " reported";
         } else {
             EXPECT_EQ(retval, 0) << "Iterator unit test error: EOF expected in test " << i;
         }
@@ -663,19 +663,19 @@ TEST_F(RaxTest, raxIteratorUnitTests) {
  * works as expected. */
 TEST_F(RaxTest, raxTryInsertUnitTests) {
     rax *t = raxNew();
-    raxInsert(t, reinterpret_cast<unsigned char *>(const_cast<char *>("FOO")), 3, reinterpret_cast<void *>(static_cast<long>(1)), nullptr);
+    raxInsert(t, (unsigned char *)("FOO"), 3, (void *)((long)(1)), nullptr);
     void *old, *val;
-    raxTryInsert(t, reinterpret_cast<unsigned char *>(const_cast<char *>("FOO")), 3, reinterpret_cast<void *>(static_cast<long>(2)), &old);
-    EXPECT_EQ(old, reinterpret_cast<void *>(static_cast<long>(1))) << "Old value not returned correctly by raxTryInsert()";
+    raxTryInsert(t, (unsigned char *)("FOO"), 3, (void *)((long)(2)), &old);
+    EXPECT_EQ(old, (void *)((long)(1))) << "Old value not returned correctly by raxTryInsert()";
 
     val = nullptr;
-    raxFind(t, reinterpret_cast<unsigned char *>(const_cast<char *>("FOO")), 3, &val);
-    EXPECT_EQ(val, reinterpret_cast<void *>(static_cast<long>(1))) << "FOO value mismatch: is " << val << " instead of 1";
+    raxFind(t, (unsigned char *)("FOO"), 3, &val);
+    EXPECT_EQ(val, (void *)((long)(1))) << "FOO value mismatch: is " << val << " instead of 1";
 
-    raxInsert(t, reinterpret_cast<unsigned char *>(const_cast<char *>("FOO")), 3, reinterpret_cast<void *>(static_cast<long>(2)), nullptr);
+    raxInsert(t, (unsigned char *)("FOO"), 3, (void *)((long)(2)), nullptr);
     val = nullptr;
-    raxFind(t, reinterpret_cast<unsigned char *>(const_cast<char *>("FOO")), 3, &val);
-    EXPECT_EQ(val, reinterpret_cast<void *>(static_cast<long>(2))) << "FOO value mismatch: is " << val << " instead of 2";
+    raxFind(t, (unsigned char *)("FOO"), 3, &val);
+    EXPECT_EQ(val, (void *)((long)(2))) << "FOO value mismatch: is " << val << " instead of 2";
 
     raxFree(t);
 }
@@ -683,19 +683,19 @@ TEST_F(RaxTest, raxTryInsertUnitTests) {
 /* Regression test #1: Iterator wrong element returned after seek. */
 TEST_F(RaxTest, raxRegressionTest1) {
     rax *rax_tree = raxNew();
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("LIKE")), 4, reinterpret_cast<void *>(static_cast<long>(1)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("TQ")), 2, reinterpret_cast<void *>(static_cast<long>(2)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("B")), 1, reinterpret_cast<void *>(static_cast<long>(3)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("FY")), 2, reinterpret_cast<void *>(static_cast<long>(4)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("WI")), 2, reinterpret_cast<void *>(static_cast<long>(5)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("LIKE"), 4, (void *)((long)(1)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("TQ"), 2, (void *)((long)(2)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("B"), 1, (void *)((long)(3)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("FY"), 2, (void *)((long)(4)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("WI"), 2, (void *)((long)(5)), nullptr);
 
     raxIterator iter;
     raxStart(&iter, rax_tree);
-    raxSeek(&iter, ">", reinterpret_cast<unsigned char *>(const_cast<char *>("FMP")), 3);
+    raxSeek(&iter, ">", (unsigned char *)("FMP"), 3);
     if (raxNext(&iter)) {
         EXPECT_TRUE(iter.key_len == 2 && memcmp(iter.key, "FY", 2) == 0)
             << "Regression test 1 failed: 'FY' expected, got: '"
-            << std::string(reinterpret_cast<char *>(iter.key), iter.key_len) << "'";
+            << std::string((char *)(iter.key), iter.key_len) << "'";
     }
 
     raxStop(&iter);
@@ -705,11 +705,11 @@ TEST_F(RaxTest, raxRegressionTest1) {
 /* Regression test #2: Crash when mixing NULL and not NULL values. */
 TEST_F(RaxTest, raxRegressionTest2) {
     rax *rt = raxNew();
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("a")), 1, reinterpret_cast<void *>(100), nullptr);
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("ab")), 2, reinterpret_cast<void *>(101), nullptr);
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3, nullptr, nullptr);
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("abcd")), 4, nullptr, nullptr);
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3, reinterpret_cast<void *>(102), nullptr);
+    raxInsert(rt, (unsigned char *)("a"), 1, (void *)(100), nullptr);
+    raxInsert(rt, (unsigned char *)("ab"), 2, (void *)(101), nullptr);
+    raxInsert(rt, (unsigned char *)("abc"), 3, nullptr, nullptr);
+    raxInsert(rt, (unsigned char *)("abcd"), 4, nullptr, nullptr);
+    raxInsert(rt, (unsigned char *)("abc"), 3, (void *)(102), nullptr);
     raxFree(rt);
 }
 
@@ -721,9 +721,9 @@ TEST_F(RaxTest, raxRegressionTest2) {
  * Valgrind error. */
 TEST_F(RaxTest, raxRegressionTest3) {
     rax *rt = raxNew();
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("D")), 1, reinterpret_cast<void *>(1), nullptr);
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("")), 0, nullptr, nullptr);
-    raxRemove(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("D")), 1, nullptr);
+    raxInsert(rt, (unsigned char *)("D"), 1, (void *)(1), nullptr);
+    raxInsert(rt, (unsigned char *)(""), 0, nullptr, nullptr);
+    raxRemove(rt, (unsigned char *)("D"), 1, nullptr);
     raxFree(rt);
 }
 
@@ -737,15 +737,15 @@ TEST_F(RaxTest, raxRegressionTest3) {
 TEST_F(RaxTest, raxRegressionTest4) {
     rax *rt = raxNew();
     raxIterator iter;
-    raxInsert(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("")), 0, reinterpret_cast<void *>(-1), nullptr);
+    raxInsert(rt, (unsigned char *)(""), 0, (void *)(-1), nullptr);
     void *val = nullptr;
-    raxFind(rt, reinterpret_cast<unsigned char *>(const_cast<char *>("")), 0, &val);
-    EXPECT_EQ(val, reinterpret_cast<void *>(-1)) << "Regression test 4 failed. Key value mismatch in raxFind()";
+    raxFind(rt, (unsigned char *)(""), 0, &val);
+    EXPECT_EQ(val, (void *)(-1)) << "Regression test 4 failed. Key value mismatch in raxFind()";
 
     raxStart(&iter, rt);
     raxSeek(&iter, "^", nullptr, 0);
     raxNext(&iter);
-    EXPECT_EQ(iter.data, reinterpret_cast<void *>(-1)) << "Regression test 4 failed. Key value mismatch in raxNext()";
+    EXPECT_EQ(iter.data, (void *)(-1)) << "Regression test 4 failed. Key value mismatch in raxNext()";
 
     raxStop(&iter);
     raxFree(rt);
@@ -755,18 +755,18 @@ TEST_F(RaxTest, raxRegressionTest4) {
 TEST_F(RaxTest, raxRegressionTest5) {
     rax *rax_tree = raxNew();
 
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("b")), 1, reinterpret_cast<void *>(static_cast<long>(1)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("by")), 2, reinterpret_cast<void *>(static_cast<long>(2)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("byword")), 6, reinterpret_cast<void *>(static_cast<long>(3)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("b"), 1, (void *)((long)(1)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("by"), 2, (void *)((long)(2)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("byword"), 6, (void *)((long)(3)), nullptr);
 
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("f")), 1, reinterpret_cast<void *>(static_cast<long>(4)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("foobar")), 6, reinterpret_cast<void *>(static_cast<long>(5)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("foobar123")), 9, reinterpret_cast<void *>(static_cast<long>(6)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("f"), 1, (void *)((long)(4)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("foobar"), 6, (void *)((long)(5)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)("foobar123"), 9, (void *)((long)(6)), nullptr);
 
     raxIterator ri;
     raxStart(&ri, rax_tree);
 
-    raxSeek(&ri, "<", reinterpret_cast<unsigned char *>(const_cast<char *>("foo")), 3);
+    raxSeek(&ri, "<", (unsigned char *)("foo"), 3);
     raxNext(&ri);
     EXPECT_TRUE(ri.key_len == 1 && ri.key[0] == 'f') << "Regression test 5 failed. Key value mismatch in raxNext()";
 
@@ -778,18 +778,18 @@ TEST_F(RaxTest, raxRegressionTest5) {
 TEST_F(RaxTest, raxRegressionTest6) {
     rax *rax_tree = raxNew();
 
-    char *key1 = const_cast<char *>("172.17.141.2/adminguide/v5.0/");
-    char *key2 = const_cast<char *>("172.17.141.2/adminguide/v5.0/entitlements-configure.html");
-    char *seekpoint = const_cast<char *>("172.17.141.2/adminguide/v5.0/entitlements");
+    char *key1 = (char *)("172.17.141.2/adminguide/v5.0/");
+    char *key2 = (char *)("172.17.141.2/adminguide/v5.0/entitlements-configure.html");
+    char *seekpoint = (char *)("172.17.141.2/adminguide/v5.0/entitlements");
 
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(key1), strlen(key1), reinterpret_cast<void *>(static_cast<long>(1234)), nullptr);
-    raxInsert(rax_tree, reinterpret_cast<unsigned char *>(key2), strlen(key2), reinterpret_cast<void *>(static_cast<long>(5678)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)(key1), strlen(key1), (void *)((long)(1234)), nullptr);
+    raxInsert(rax_tree, (unsigned char *)(key2), strlen(key2), (void *)((long)(5678)), nullptr);
 
     raxIterator ri;
     raxStart(&ri, rax_tree);
-    raxSeek(&ri, "<=", reinterpret_cast<unsigned char *>(seekpoint), strlen(seekpoint));
+    raxSeek(&ri, "<=", (unsigned char *)(seekpoint), strlen(seekpoint));
     raxPrev(&ri);
-    EXPECT_EQ(static_cast<long>(reinterpret_cast<intptr_t>(ri.data)), 1234L) << "Regression test 6 failed. Key data not populated.";
+    EXPECT_EQ((long)((intptr_t)(ri.data)), 1234L) << "Regression test 6 failed. Key data not populated.";
 
     raxStop(&ri);
     raxFree(rax_tree);
@@ -809,23 +809,23 @@ TEST_F(RaxTest, DISABLED_raxBenchmark) {
         for (int i = 0; i < 5000000; i++) {
             char buf[64];
             int len = int2key(buf, sizeof(buf), i, mode);
-            raxInsert(t, reinterpret_cast<unsigned char *>(buf), len, reinterpret_cast<void *>(static_cast<long>(i)), nullptr);
+            raxInsert(t, (unsigned char *)(buf), len, (void *)((long)(i)), nullptr);
             EXPECT_EQ(raxAllocSize(t) + used_memory_before, zmalloc_used_memory());
         }
-        printf("Insert: %f\n", static_cast<double>(ustime() - start) / 1000000);
-        printf("%llu total nodes\n", static_cast<unsigned long long>(t->numnodes));
-        printf("%llu total elements\n", static_cast<unsigned long long>(t->numele));
+        printf("Insert: %f\n", (double)(ustime() - start) / 1000000);
+        printf("%llu total nodes\n", (unsigned long long)(t->numnodes));
+        printf("%llu total elements\n", (unsigned long long)(t->numele));
 
         start = ustime();
         for (int i = 0; i < 5000000; i++) {
             char buf[64];
             int len = int2key(buf, sizeof(buf), i, mode);
             void *data;
-            EXPECT_TRUE(raxFind(t, reinterpret_cast<unsigned char *>(buf), len, &data) &&
-                        data == reinterpret_cast<void *>(static_cast<long>(i)))
-                << "Issue with " << buf << ": " << data << " instead of " << reinterpret_cast<void *>(static_cast<long>(i));
+            EXPECT_TRUE(raxFind(t, (unsigned char *)(buf), len, &data) &&
+                        data == (void *)((long)(i)))
+                << "Issue with " << buf << ": " << data << " instead of " << (void *)((long)(i));
         }
-        printf("Linear lookup: %f\n", static_cast<double>(ustime() - start) / 1000000);
+        printf("Linear lookup: %f\n", (double)(ustime() - start) / 1000000);
 
         start = ustime();
         for (int i = 0; i < 5000000; i++) {
@@ -833,20 +833,20 @@ TEST_F(RaxTest, DISABLED_raxBenchmark) {
             int r = genrand64_int64() % 5000000;
             int len = int2key(buf, sizeof(buf), r, mode);
             void *data;
-            EXPECT_TRUE(raxFind(t, reinterpret_cast<unsigned char *>(buf), len, &data) &&
-                        data == reinterpret_cast<void *>(static_cast<long>(r)))
-                << "Issue with " << buf << ": " << data << " instead of " << reinterpret_cast<void *>(static_cast<long>(r));
+            EXPECT_TRUE(raxFind(t, (unsigned char *)(buf), len, &data) &&
+                        data == (void *)((long)(r)))
+                << "Issue with " << buf << ": " << data << " instead of " << (void *)((long)(r));
         }
-        printf("Random lookup: %f\n", static_cast<double>(ustime() - start) / 1000000);
+        printf("Random lookup: %f\n", (double)(ustime() - start) / 1000000);
 
         start = ustime();
         for (int i = 0; i < 5000000; i++) {
             char buf[64];
             int len = int2key(buf, sizeof(buf), i, mode);
             buf[i % len] = '!'; /* "!" is never set into keys. */
-            EXPECT_FALSE(raxFind(t, reinterpret_cast<unsigned char *>(buf), len, nullptr)) << "Lookup should have failed";
+            EXPECT_FALSE(raxFind(t, (unsigned char *)(buf), len, nullptr)) << "Lookup should have failed";
         }
-        printf("Failed lookup: %f\n", static_cast<double>(ustime() - start) / 1000000);
+        printf("Failed lookup: %f\n", (double)(ustime() - start) / 1000000);
 
         start = ustime();
         raxIterator ri;
@@ -856,20 +856,20 @@ TEST_F(RaxTest, DISABLED_raxBenchmark) {
         while (raxNext(&ri)) iter++;
         EXPECT_EQ(iter, 5000000) << "Iteration is incomplete";
         raxStop(&ri);
-        printf("Full iteration: %f\n", static_cast<double>(ustime() - start) / 1000000);
+        printf("Full iteration: %f\n", (double)(ustime() - start) / 1000000);
 
         start = ustime();
         for (int i = 0; i < 5000000; i++) {
             char buf[64];
             int len = int2key(buf, sizeof(buf), i, mode);
-            int retval = raxRemove(t, reinterpret_cast<unsigned char *>(buf), len, nullptr);
+            int retval = raxRemove(t, (unsigned char *)(buf), len, nullptr);
             EXPECT_EQ(retval, 1);
             EXPECT_EQ(raxAllocSize(t) + used_memory_before, zmalloc_used_memory());
         }
-        printf("Deletion: %f\n", static_cast<double>(ustime() - start) / 1000000);
+        printf("Deletion: %f\n", (double)(ustime() - start) / 1000000);
 
-        printf("%llu total nodes\n", static_cast<unsigned long long>(t->numnodes));
-        printf("%llu total elements\n", static_cast<unsigned long long>(t->numele));
+        printf("%llu total nodes\n", (unsigned long long)(t->numnodes));
+        printf("%llu total elements\n", (unsigned long long)(t->numele));
         raxFree(t);
     }
 }
@@ -882,7 +882,7 @@ TEST_F(RaxTest, DISABLED_raxBenchmark) {
 TEST_F(RaxTest, DISABLED_raxHugeKey) {
     if (!large_memory) GTEST_SKIP() << "Skipping large memory test";
     size_t max_keylen = ((1 << 29) - 1) + 100;
-    unsigned char *key = static_cast<unsigned char *>(zmalloc(max_keylen));
+    unsigned char *key = (unsigned char *)(zmalloc(max_keylen));
     if (key == nullptr) {
         fprintf(stderr, "Sorry, not enough memory to execute --hugekey test.");
         GTEST_SKIP();
@@ -892,14 +892,14 @@ TEST_F(RaxTest, DISABLED_raxHugeKey) {
     key[10] = 'X';
     key[max_keylen - 1] = 'Y';
     rax *rax_tree = raxNew();
-    int retval = raxInsert(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("aaabbb")), 6, reinterpret_cast<void *>(5678L), nullptr);
+    int retval = raxInsert(rax_tree, (unsigned char *)("aaabbb"), 6, (void *)(5678L), nullptr);
     if (retval == 0 && errno == ENOMEM) {
         fprintf(stderr, "Sorry, not enough memory to execute --hugekey test.");
         zfree(key);
         raxFree(rax_tree);
         GTEST_SKIP();
     }
-    retval = raxInsert(rax_tree, key, max_keylen, reinterpret_cast<void *>(1234L), nullptr);
+    retval = raxInsert(rax_tree, key, max_keylen, (void *)(1234L), nullptr);
     if (retval == 0 && errno == ENOMEM) {
         fprintf(stderr, "Sorry, not enough memory to execute --hugekey test.");
         zfree(key);
@@ -907,11 +907,11 @@ TEST_F(RaxTest, DISABLED_raxHugeKey) {
         GTEST_SKIP();
     }
     void *value1, *value2;
-    int found1 = raxFind(rax_tree, reinterpret_cast<unsigned char *>(const_cast<char *>("aaabbb")), 6, &value1);
+    int found1 = raxFind(rax_tree, (unsigned char *)("aaabbb"), 6, &value1);
     int found2 = raxFind(rax_tree, key, max_keylen, &value2);
     zfree(key);
     EXPECT_TRUE(found1 && found2) << "Huge key test failed on elementhood";
-    EXPECT_TRUE(value1 == reinterpret_cast<void *>(5678L) && value2 == reinterpret_cast<void *>(1234L))
+    EXPECT_TRUE(value1 == (void *)(5678L) && value2 == (void *)(1234L))
         << "Huge key test failed";
     raxFree(rax_tree);
 }
@@ -928,13 +928,13 @@ TEST_F(RaxTest, DISABLED_raxFuzz) {
     init_genrand64(1234);
 
     for (int i = 0; i < 10; i++) {
-        double alpha = static_cast<double>(genrand64_int64()) / RAND_MAX;
+        double alpha = (double)(genrand64_int64()) / RAND_MAX;
         double beta = 1 - alpha;
         if (fuzzTestCluster(genrand64_int64() % 100000000, alpha, beta)) errors++;
     }
 
     for (int i = 0; i < 10; i++) {
-        double alpha = static_cast<double>(genrand64_int64()) / RAND_MAX;
+        double alpha = (double)(genrand64_int64()) / RAND_MAX;
         double beta = 1 - alpha;
         if (fuzzTest(KEY_INT, genrand64_int64() % 10000, alpha, beta)) errors++;
         if (fuzzTest(KEY_UNIQUE_ALPHA, genrand64_int64() % 10000, alpha, beta)) errors++;
@@ -997,14 +997,14 @@ TEST_F(RaxTest, DISABLED_raxRecompressHugeKey) {
     for (i = 1; i <= 20; i++) {
         snprintf(small_key, sizeof(small_key), "%s%d", small_prefix, i);
         size_t keylen = strlen(small_key);
-        raxInsert(rt, reinterpret_cast<unsigned char *>(small_key), keylen,
-                  reinterpret_cast<void *>(static_cast<long>(i)), nullptr);
+        raxInsert(rt, (unsigned char *)(small_key), keylen,
+                  (void *)((long)(i)), nullptr);
     }
 
     /* Insert large key exceeding compressed node size limit */
     size_t max_keylen = ((1 << 29) - 1) + 100; // Compressed node limit + overflow
     const char *large_prefix = ",({ABC}";
-    unsigned char *large_key = static_cast<unsigned char *>(zmalloc(max_keylen + strlen(large_prefix)));
+    unsigned char *large_key = (unsigned char *)(zmalloc(max_keylen + strlen(large_prefix)));
     ASSERT_NE(large_key, nullptr) << "Failed to allocate memory for large key";
 
     memcpy(large_key, large_prefix, strlen(large_prefix));
@@ -1015,7 +1015,7 @@ TEST_F(RaxTest, DISABLED_raxRecompressHugeKey) {
     for (i = 20; i >= 1; i--) {
         snprintf(small_key, sizeof(small_key), "%s%d", small_prefix, i);
         size_t keylen = strlen(small_key);
-        raxRemove(rt, reinterpret_cast<unsigned char *>(small_key), keylen, nullptr);
+        raxRemove(rt, (unsigned char *)(small_key), keylen, nullptr);
     }
 
     zfree(large_key);

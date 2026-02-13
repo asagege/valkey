@@ -21,11 +21,11 @@ extern "C" {
 extern bool accurate;
 extern bool large_memory;
 /* Wrapper function declarations for accessing static quicklist.c internals */
-size_t gtest_quicklist_node_neg_fill_limit(int fill);
-quicklistNode *gtest_quicklistCreateNode(void);
-quicklistNode *gtest_quicklistCreateNodeWithValue(int container, void *value, size_t sz);
-int gtest_quicklistCompressNode(quicklistNode *node);
-int gtest_quicklistDecompressNode(quicklistNode *node);
+size_t testOnlyQuicklistNodeNegFillLimit(int fill);
+quicklistNode *testOnlyQuicklistCreateNode(void);
+quicklistNode *testOnlyQuicklistCreateNodeWithValue(int container, void *value, size_t sz);
+int testOnlyQuicklistCompressNode(quicklistNode *node);
+int testOnlyQuicklistDecompressNode(quicklistNode *node);
 }
 
 /* Constants from quicklist.c */
@@ -114,7 +114,7 @@ static int _itrprintr(quicklist *ql, int print, int forward) {
         if (print) {
             int size = (entry.sz > (1 << 20)) ? 1 << 20 : entry.sz;
             printf("[%3d (%2d)]: [%.*s] (%lld)\n", i, p, size,
-                   reinterpret_cast<char *>(entry.value), entry.longval);
+                   (char *)(entry.value), entry.longval);
         }
         i++;
     }
@@ -184,7 +184,7 @@ static int _ql_verify(quicklist *ql, uint32_t len, uint32_t count, uint32_t head
     }
 
     int loopr = itrprintr(ql, 0);
-    if (loopr != static_cast<int>(ql->count)) {
+    if (loopr != (int)(ql->count)) {
         printf("quicklist cached count not match actual count: expected %lu, got "
                "%d",
                ql->count, loopr);
@@ -255,35 +255,35 @@ TEST_F(QuicklistTest, quicklistCreateList) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistAddToTailOfEmptyList) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushTail(ql, const_cast<char *>("hello"), 6);
+        quicklistPushTail(ql, (char *)("hello"), 6);
         /* 1 for head and 1 for tail because 1 node = head = tail */
         ql_verify(ql, 1, 1, 1, 1);
         quicklistRelease(ql);
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistAddToHeadOfEmptyList) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushHead(ql, const_cast<char *>("hello"), 6);
+        quicklistPushHead(ql, (char *)("hello"), 6);
         /* 1 for head and 1 for tail because 1 node = head = tail */
         ql_verify(ql, 1, 1, 1, 1);
         quicklistRelease(ql);
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistAddToTail5xAtCompress) {
@@ -300,7 +300,7 @@ TEST_F(QuicklistTest, quicklistAddToTail5xAtCompress) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistAddToHead5xAtCompress) {
@@ -317,7 +317,7 @@ TEST_F(QuicklistTest, quicklistAddToHead5xAtCompress) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistAddToTail500xAtCompress) {
@@ -334,7 +334,7 @@ TEST_F(QuicklistTest, quicklistAddToTail500xAtCompress) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistAddToHead500xAtCompress) {
@@ -351,7 +351,7 @@ TEST_F(QuicklistTest, quicklistAddToHead500xAtCompress) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistRotateEmpty) {
@@ -359,15 +359,15 @@ TEST_F(QuicklistTest, quicklistRotateEmpty) {
     quicklistRotate(ql);
     ql_verify(ql, 0, 0, 0, 0);
     quicklistRelease(ql);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistComprassionPlainNode) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         for (int f = 0; f < fill_count; f++) {
-            size_t large_limit = (fills[f] < 0) ? gtest_quicklist_node_neg_fill_limit(fills[f]) + 1 : SIZE_SAFETY_LIMIT + 1;
-            char *buf = static_cast<char *>(zmalloc(large_limit));
+            size_t large_limit = (fills[f] < 0) ? testOnlyQuicklistNodeNegFillLimit(fills[f]) + 1 : SIZE_SAFETY_LIMIT + 1;
+            char *buf = (char *)(zmalloc(large_limit));
             quicklist *ql = quicklistNew(fills[f], 1);
             for (int i = 0; i < 500; i++) {
                 /* Set to 256 to allow the node to be triggered to compress,
@@ -386,14 +386,14 @@ TEST_F(QuicklistTest, quicklistComprassionPlainNode) {
             quicklistEntry entry;
             int i = 0;
             while (quicklistNext(iter, &entry)) {
-                EXPECT_TRUE(QL_NODE_IS_PLAIN(entry.node));
+                ASSERT_TRUE(QL_NODE_IS_PLAIN(entry.node));
                 snprintf(buf, large_limit, "hello%d", i);
                 size_t len = strlen(buf);
                 if (len < large_limit) {
                     memset(buf + len, 'x', large_limit - len - 1);
                     buf[large_limit - 1] = '\0';
                 }
-                EXPECT_EQ(memcmp(entry.value, buf, large_limit), 0);
+                ASSERT_EQ(memcmp(entry.value, buf, large_limit), 0);
                 i++;
             }
             ql_release_iterator(iter);
@@ -403,7 +403,7 @@ TEST_F(QuicklistTest, quicklistComprassionPlainNode) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 
@@ -411,15 +411,15 @@ TEST_F(QuicklistTest, quicklistNextPlainNode) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         for (int f = 0; f < fill_count; f++) {
-            size_t large_limit = (fills[f] < 0) ? gtest_quicklist_node_neg_fill_limit(fills[f]) + 1 : SIZE_SAFETY_LIMIT + 1;
+            size_t large_limit = (fills[f] < 0) ? testOnlyQuicklistNodeNegFillLimit(fills[f]) + 1 : SIZE_SAFETY_LIMIT + 1;
             quicklist *ql = quicklistNew(fills[f], options[_i]);
 
-            char *buf = static_cast<char *>(zmalloc(large_limit));
+            char *buf = (char *)(zmalloc(large_limit));
             memcpy(buf, "plain", 5);
             quicklistPushHead(ql, buf, large_limit);
             quicklistPushHead(ql, buf, large_limit);
-            quicklistPushHead(ql, const_cast<char *>("packed3"), 7);
-            quicklistPushHead(ql, const_cast<char *>("packed4"), 7);
+            quicklistPushHead(ql, (char *)("packed3"), 7);
+            quicklistPushHead(ql, (char *)("packed4"), 7);
             quicklistPushHead(ql, buf, large_limit);
 
             quicklistEntry entry;
@@ -431,12 +431,12 @@ TEST_F(QuicklistTest, quicklistNextPlainNode) {
             while (quicklistNext(iter, &entry) != 0) {
                 if (QL_NODE_IS_PLAIN(entry.node)) {
                     /* If it's a plain node, it should contain "plain" */
-                    EXPECT_EQ(memcmp(entry.value, "plain", 5), 0);
+                    ASSERT_EQ(memcmp(entry.value, "plain", 5), 0);
                 } else {
                     /* If it's a packed node, check if it's one of our expected values */
                     bool is_plain_value = (entry.sz >= 5 && memcmp(entry.value, "plain", 5) == 0);
                     bool is_packed_value = (entry.sz >= 6 && memcmp(entry.value, "packed", 6) == 0);
-                    EXPECT_TRUE(is_plain_value || is_packed_value);
+                    ASSERT_TRUE(is_plain_value || is_packed_value);
                 }
             }
             ql_release_iterator(iter);
@@ -446,7 +446,7 @@ TEST_F(QuicklistTest, quicklistNextPlainNode) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 
@@ -454,14 +454,14 @@ TEST_F(QuicklistTest, quicklistRotatePlainNode) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         for (int f = 0; f < fill_count; f++) {
-            size_t large_limit = (fills[f] < 0) ? gtest_quicklist_node_neg_fill_limit(fills[f]) + 1 : SIZE_SAFETY_LIMIT + 1;
+            size_t large_limit = (fills[f] < 0) ? testOnlyQuicklistNodeNegFillLimit(fills[f]) + 1 : SIZE_SAFETY_LIMIT + 1;
 
             unsigned char *data = nullptr;
             size_t sz;
             long long lv;
             int i = 0;
             quicklist *ql = quicklistNew(fills[f], options[_i]);
-            char *buf = static_cast<char *>(zmalloc(large_limit));
+            char *buf = (char *)(zmalloc(large_limit));
             memcpy(buf, "hello1", 6);
             /* Fill the rest of the buffer to make it actually large */
             if (large_limit > 6) {
@@ -486,11 +486,11 @@ TEST_F(QuicklistTest, quicklistRotatePlainNode) {
             quicklistRotate(ql);
 
             for (i = 1; i < 5; i++) {
-                EXPECT_TRUE(QL_NODE_IS_PLAIN(ql->tail));
+                ASSERT_TRUE(QL_NODE_IS_PLAIN(ql->tail));
                 quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv);
                 int temp_char = data[5];
                 zfree(data);
-                EXPECT_EQ(temp_char, '0' + i);
+                ASSERT_EQ(temp_char, '0' + i);
             }
 
             ql_verify(ql, 0, 0, 0, 0);
@@ -500,14 +500,14 @@ TEST_F(QuicklistTest, quicklistRotatePlainNode) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistRotateOneValOnce) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushHead(ql, const_cast<char *>("hello"), 6);
+        quicklistPushHead(ql, (char *)("hello"), 6);
         quicklistRotate(ql);
         /* Ignore compression verify because listpack is
          * too small to compress. */
@@ -516,7 +516,7 @@ TEST_F(QuicklistTest, quicklistRotateOneValOnce) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistRotate500Val5000TimesAtCompress) {
@@ -524,10 +524,10 @@ TEST_F(QuicklistTest, quicklistRotate500Val5000TimesAtCompress) {
         long long start = mstime();
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
-            quicklistPushHead(ql, const_cast<char *>("900"), 3);
-            quicklistPushHead(ql, const_cast<char *>("7000"), 4);
-            quicklistPushHead(ql, const_cast<char *>("-1200"), 5);
-            quicklistPushHead(ql, const_cast<char *>("42"), 2);
+            quicklistPushHead(ql, (char *)("900"), 3);
+            quicklistPushHead(ql, (char *)("7000"), 4);
+            quicklistPushHead(ql, (char *)("-1200"), 5);
+            quicklistPushHead(ql, (char *)("42"), 2);
             for (int i = 0; i < 500; i++)
                 quicklistPushHead(ql, genstr("hello", i), 64);
             ql_info(ql);
@@ -546,7 +546,7 @@ TEST_F(QuicklistTest, quicklistRotate500Val5000TimesAtCompress) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistPopEmpty) {
@@ -554,7 +554,7 @@ TEST_F(QuicklistTest, quicklistPopEmpty) {
     quicklistPop(ql, QUICKLIST_HEAD, nullptr, nullptr, nullptr);
     ql_verify(ql, 0, 0, 0, 0);
     quicklistRelease(ql);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistPop1StringFrom1) {
@@ -567,36 +567,36 @@ TEST_F(QuicklistTest, quicklistPop1StringFrom1) {
         size_t sz;
         long long lv;
         ql_info(ql);
-        EXPECT_TRUE(quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv));
-        EXPECT_NE(data, nullptr);
-        EXPECT_EQ(strcmp(populate, reinterpret_cast<char *>(data)), 0);
+        ASSERT_TRUE(quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv));
+        ASSERT_NE(data, nullptr);
+        ASSERT_EQ(strcmp(populate, (char *)(data)), 0);
         zfree(data);
         ql_verify(ql, 0, 0, 0, 0);
         quicklistRelease(ql);
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistPopHead1NumberFrom1) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushHead(ql, const_cast<char *>("55513"), 5);
+        quicklistPushHead(ql, (char *)("55513"), 5);
         unsigned char *data;
         size_t sz;
         long long lv;
         ql_info(ql);
-        EXPECT_TRUE(quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv));
-        EXPECT_EQ(lv, 55513);
+        ASSERT_TRUE(quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv));
+        ASSERT_EQ(lv, 55513);
         zfree(data);
         ql_verify(ql, 0, 0, 0, 0);
         quicklistRelease(ql);
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistPopHead500From500) {
@@ -611,8 +611,8 @@ TEST_F(QuicklistTest, quicklistPopHead500From500) {
             size_t sz;
             long long lv;
             int ret = quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv);
-            EXPECT_TRUE(ret);
-            EXPECT_EQ(strcmp(genstr("hello", 499 - i), reinterpret_cast<char *>(data)), 0);
+            ASSERT_TRUE(ret);
+            ASSERT_EQ(strcmp(genstr("hello", 499 - i), (char *)(data)), 0);
             zfree(data);
         }
         ql_verify(ql, 0, 0, 0, 0);
@@ -620,7 +620,7 @@ TEST_F(QuicklistTest, quicklistPopHead500From500) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistPopHead5000From500) {
@@ -635,13 +635,13 @@ TEST_F(QuicklistTest, quicklistPopHead5000From500) {
             long long lv;
             int ret = quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv);
             if (i < 500) {
-                EXPECT_TRUE(ret);
-                EXPECT_NE(data, nullptr);
-                EXPECT_EQ(sz, 32u);
-                EXPECT_EQ(strcmp(genstr("hello", 499 - i), reinterpret_cast<char *>(data)), 0);
+                ASSERT_TRUE(ret);
+                ASSERT_NE(data, nullptr);
+                ASSERT_EQ(sz, 32u);
+                ASSERT_EQ(strcmp(genstr("hello", 499 - i), (char *)(data)), 0);
                 zfree(data);
             } else {
-                EXPECT_FALSE(ret);
+                ASSERT_FALSE(ret);
             }
         }
         ql_verify(ql, 0, 0, 0, 0);
@@ -649,7 +649,7 @@ TEST_F(QuicklistTest, quicklistPopHead5000From500) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIterateForwardOver500List) {
@@ -663,7 +663,7 @@ TEST_F(QuicklistTest, quicklistIterateForwardOver500List) {
         quicklistEntry entry;
         int i = 0, count = 0;
         while (quicklistNext(iter, &entry)) {
-            EXPECT_EQ(strcmp(genstr("hello", i), reinterpret_cast<char *>(entry.value)), 0);
+            ASSERT_EQ(strcmp(genstr("hello", i), (char *)(entry.value)), 0);
             i++;
             count++;
         }
@@ -675,7 +675,7 @@ TEST_F(QuicklistTest, quicklistIterateForwardOver500List) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIterateReverseOver500List) {
@@ -689,7 +689,7 @@ TEST_F(QuicklistTest, quicklistIterateReverseOver500List) {
         quicklistEntry entry;
         int i = 0;
         while (quicklistNext(iter, &entry)) {
-            EXPECT_EQ(strcmp(genstr("hello", i), reinterpret_cast<char *>(entry.value)), 0);
+            ASSERT_EQ(strcmp(genstr("hello", i), (char *)(entry.value)), 0);
             i++;
         }
         if (i != 500)
@@ -700,59 +700,59 @@ TEST_F(QuicklistTest, quicklistIterateReverseOver500List) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistInsertAfter1Element) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushHead(ql, const_cast<char *>("hello"), 6);
+        quicklistPushHead(ql, (char *)("hello"), 6);
         quicklistEntry entry;
         quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-        quicklistInsertAfter(iter, &entry, const_cast<char *>("abc"), 4);
+        quicklistInsertAfter(iter, &entry, (char *)("abc"), 4);
         ql_release_iterator(iter);
         ql_verify(ql, 1, 2, 2, 2);
 
         /* verify results */
         iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-        EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "hello", 5), 0);
+        ASSERT_EQ(strncmp((char *)(entry.value), "hello", 5), 0);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-        EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "abc", 3), 0);
+        ASSERT_EQ(strncmp((char *)(entry.value), "abc", 3), 0);
         ql_release_iterator(iter);
         quicklistRelease(ql);
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistInsertBefore1Element) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushHead(ql, const_cast<char *>("hello"), 6);
+        quicklistPushHead(ql, (char *)("hello"), 6);
         quicklistEntry entry;
         quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-        quicklistInsertBefore(iter, &entry, const_cast<char *>("abc"), 4);
+        quicklistInsertBefore(iter, &entry, (char *)("abc"), 4);
         ql_release_iterator(iter);
         ql_verify(ql, 1, 2, 2, 2);
 
         /* verify results */
         iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-        EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "abc", 3), 0);
+        ASSERT_EQ(strncmp((char *)(entry.value), "abc", 3), 0);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-        EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "hello", 5), 0);
+        ASSERT_EQ(strncmp((char *)(entry.value), "hello", 5), 0);
         ql_release_iterator(iter);
         quicklistRelease(ql);
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistInsertHeadWhileHeadNodeIsFull) {
@@ -772,7 +772,7 @@ TEST_F(QuicklistTest, quicklistInsertHeadWhileHeadNodeIsFull) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistInsertTailWhileTailNodeIsFull) {
@@ -792,7 +792,7 @@ TEST_F(QuicklistTest, quicklistInsertTailWhileTailNodeIsFull) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistInsertOnceInElementsWhileIteratingAtCompress) {
@@ -800,20 +800,20 @@ TEST_F(QuicklistTest, quicklistInsertOnceInElementsWhileIteratingAtCompress) {
         long long start = mstime();
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
-            quicklistPushTail(ql, const_cast<char *>("abc"), 3);
+            quicklistPushTail(ql, (char *)("abc"), 3);
             quicklistSetFill(ql, 1);
-            quicklistPushTail(ql, const_cast<char *>("def"), 3);
+            quicklistPushTail(ql, (char *)("def"), 3);
             quicklistSetFill(ql, f);
-            quicklistPushTail(ql, const_cast<char *>("bob"), 3);
-            quicklistPushTail(ql, const_cast<char *>("foo"), 3);
-            quicklistPushTail(ql, const_cast<char *>("zoo"), 3);
+            quicklistPushTail(ql, (char *)("bob"), 3);
+            quicklistPushTail(ql, (char *)("foo"), 3);
+            quicklistPushTail(ql, (char *)("zoo"), 3);
 
             itrprintr(ql, 0);
             quicklistIter *iter = quicklistGetIterator(ql, AL_START_HEAD);
             quicklistEntry entry;
             while (quicklistNext(iter, &entry)) {
-                if (!strncmp(reinterpret_cast<char *>(entry.value), "bob", 3)) {
-                    quicklistInsertBefore(iter, &entry, const_cast<char *>("bar"), 3);
+                if (!strncmp((char *)(entry.value), "bob", 3)) {
+                    quicklistInsertBefore(iter, &entry, (char *)("bar"), 3);
                     break;
                 }
             }
@@ -822,34 +822,34 @@ TEST_F(QuicklistTest, quicklistInsertOnceInElementsWhileIteratingAtCompress) {
 
             /* verify results */
             iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-            EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "abc", 3), 0);
+            ASSERT_EQ(strncmp((char *)(entry.value), "abc", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-            EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "def", 3), 0);
+            ASSERT_EQ(strncmp((char *)(entry.value), "def", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 2, &entry);
-            EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "bar", 3), 0);
+            ASSERT_EQ(strncmp((char *)(entry.value), "bar", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 3, &entry);
-            EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "bob", 3), 0);
+            ASSERT_EQ(strncmp((char *)(entry.value), "bob", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 4, &entry);
-            EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "foo", 3), 0);
+            ASSERT_EQ(strncmp((char *)(entry.value), "foo", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 5, &entry);
-            EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "zoo", 3), 0);
+            ASSERT_EQ(strncmp((char *)(entry.value), "zoo", 3), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistInsertBefore250NewInMiddleOf500ElementsAtCompress) {
@@ -872,7 +872,7 @@ TEST_F(QuicklistTest, quicklistInsertBefore250NewInMiddleOf500ElementsAtCompress
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistInsertAfter250NewInMiddleOf500ElementsAtCompress) {
@@ -888,7 +888,7 @@ TEST_F(QuicklistTest, quicklistInsertAfter250NewInMiddleOf500ElementsAtCompress)
                 quicklistInsertAfter(iter, &entry, genstr("abc", i), 32);
                 ql_release_iterator(iter);
             }
-            EXPECT_EQ(ql->count, 750u);
+            ASSERT_EQ(ql->count, 750u);
             if (fills[f] == 32)
                 ql_verify(ql, 26, 750, 20, 32);
             quicklistRelease(ql);
@@ -896,7 +896,7 @@ TEST_F(QuicklistTest, quicklistInsertAfter250NewInMiddleOf500ElementsAtCompress)
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDuplicateEmptyList) {
@@ -911,7 +911,7 @@ TEST_F(QuicklistTest, quicklistDuplicateEmptyList) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDuplicateListOf1Element) {
@@ -927,7 +927,7 @@ TEST_F(QuicklistTest, quicklistDuplicateListOf1Element) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDuplicateListOf500) {
@@ -946,7 +946,7 @@ TEST_F(QuicklistTest, quicklistDuplicateListOf500) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIndex1200From500ListAtFill) {
@@ -958,18 +958,18 @@ TEST_F(QuicklistTest, quicklistIndex1200From500ListAtFill) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-            EXPECT_EQ(strcmp(reinterpret_cast<char *>(entry.value), "hello2"), 0);
+            ASSERT_EQ(strcmp((char *)(entry.value), "hello2"), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 200, &entry);
-            EXPECT_EQ(strcmp(reinterpret_cast<char *>(entry.value), "hello201"), 0);
+            ASSERT_EQ(strcmp((char *)(entry.value), "hello201"), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIndex12From500ListAtFill) {
@@ -981,18 +981,18 @@ TEST_F(QuicklistTest, quicklistIndex12From500ListAtFill) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
-            EXPECT_EQ(strcmp(reinterpret_cast<char *>(entry.value), "hello500"), 0);
+            ASSERT_EQ(strcmp((char *)(entry.value), "hello500"), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -2, &entry);
-            EXPECT_EQ(strcmp(reinterpret_cast<char *>(entry.value), "hello499"), 0);
+            ASSERT_EQ(strcmp((char *)(entry.value), "hello499"), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIndex100From500ListAtFill) {
@@ -1004,14 +1004,14 @@ TEST_F(QuicklistTest, quicklistIndex100From500ListAtFill) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, -100, &entry);
-            EXPECT_EQ(strcmp(reinterpret_cast<char *>(entry.value), "hello401"), 0);
+            ASSERT_EQ(strcmp((char *)(entry.value), "hello401"), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIndexTooBig1From50ListAtFill) {
@@ -1023,14 +1023,14 @@ TEST_F(QuicklistTest, quicklistIndexTooBig1From50ListAtFill) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 50, &entry);
-            EXPECT_EQ(iter, nullptr);
+            ASSERT_EQ(iter, nullptr);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteRangeEmptyList) {
@@ -1043,7 +1043,7 @@ TEST_F(QuicklistTest, quicklistDeleteRangeEmptyList) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteRangeOfEntireNodeInListOfOneNode) {
@@ -1059,7 +1059,7 @@ TEST_F(QuicklistTest, quicklistDeleteRangeOfEntireNodeInListOfOneNode) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteRangeOfEntireNodeWithOverflowCounts) {
@@ -1075,7 +1075,7 @@ TEST_F(QuicklistTest, quicklistDeleteRangeOfEntireNodeWithOverflowCounts) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteMiddle100Of500List) {
@@ -1092,7 +1092,7 @@ TEST_F(QuicklistTest, quicklistDeleteMiddle100Of500List) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteLessThanFillButAcrossNodes) {
@@ -1109,7 +1109,7 @@ TEST_F(QuicklistTest, quicklistDeleteLessThanFillButAcrossNodes) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteNegative1From500List) {
@@ -1126,7 +1126,7 @@ TEST_F(QuicklistTest, quicklistDeleteNegative1From500List) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteNegative1From500ListWithOverflowCounts) {
@@ -1143,7 +1143,7 @@ TEST_F(QuicklistTest, quicklistDeleteNegative1From500ListWithOverflowCounts) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDeleteNegative100From500List) {
@@ -1159,7 +1159,7 @@ TEST_F(QuicklistTest, quicklistDeleteNegative100From500List) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistDelete10Count5From50List) {
@@ -1176,64 +1176,64 @@ TEST_F(QuicklistTest, quicklistDelete10Count5From50List) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistNumbersOnlyListRead) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushTail(ql, const_cast<char *>("1111"), 4);
-        quicklistPushTail(ql, const_cast<char *>("2222"), 4);
-        quicklistPushTail(ql, const_cast<char *>("3333"), 4);
-        quicklistPushTail(ql, const_cast<char *>("4444"), 4);
+        quicklistPushTail(ql, (char *)("1111"), 4);
+        quicklistPushTail(ql, (char *)("2222"), 4);
+        quicklistPushTail(ql, (char *)("3333"), 4);
+        quicklistPushTail(ql, (char *)("4444"), 4);
         ql_verify(ql, 1, 4, 4, 4);
         quicklistEntry entry;
         quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-        EXPECT_EQ(entry.longval, 1111);
+        ASSERT_EQ(entry.longval, 1111);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-        EXPECT_EQ(entry.longval, 2222);
+        ASSERT_EQ(entry.longval, 2222);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 2, &entry);
-        EXPECT_EQ(entry.longval, 3333);
+        ASSERT_EQ(entry.longval, 3333);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 3, &entry);
-        EXPECT_EQ(entry.longval, 4444);
+        ASSERT_EQ(entry.longval, 4444);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 4, &entry);
-        EXPECT_EQ(iter, nullptr);
+        ASSERT_EQ(iter, nullptr);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
-        EXPECT_EQ(entry.longval, 4444);
+        ASSERT_EQ(entry.longval, 4444);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, -2, &entry);
-        EXPECT_EQ(entry.longval, 3333);
+        ASSERT_EQ(entry.longval, 3333);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, -3, &entry);
-        EXPECT_EQ(entry.longval, 2222);
+        ASSERT_EQ(entry.longval, 2222);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, -4, &entry);
-        EXPECT_EQ(entry.longval, 1111);
+        ASSERT_EQ(entry.longval, 1111);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, -5, &entry);
-        EXPECT_EQ(iter, nullptr);
+        ASSERT_EQ(iter, nullptr);
         ql_release_iterator(iter);
         quicklistRelease(ql);
 
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistNumbersLargerListRead) {
@@ -1242,22 +1242,22 @@ TEST_F(QuicklistTest, quicklistNumbersLargerListRead) {
         quicklist *ql = quicklistNew(-2, options[_i]);
         quicklistSetFill(ql, 32);
         char num[32];
-        long long *nums = static_cast<long long *>(zmalloc(sizeof(long long) * 5000));
+        long long *nums = (long long *)(zmalloc(sizeof(long long) * 5000));
         for (int i = 0; i < 5000; i++) {
             nums[i] = -5157318210846258176 + i;
             int sz = ll2string(num, sizeof(num), nums[i]);
             quicklistPushTail(ql, num, sz);
         }
-        quicklistPushTail(ql, const_cast<char *>("xxxxxxxxxxxxxxxxxxxx"), 20);
+        quicklistPushTail(ql, (char *)("xxxxxxxxxxxxxxxxxxxx"), 20);
         quicklistEntry entry;
         for (int i = 0; i < 5000; i++) {
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, i, &entry);
-            EXPECT_EQ(entry.longval, nums[i]);
+            ASSERT_EQ(entry.longval, nums[i]);
             entry.longval = 0xdeadbeef;
             ql_release_iterator(iter);
         }
         quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 5000, &entry);
-        EXPECT_EQ(strncmp(reinterpret_cast<char *>(entry.value), "xxxxxxxxxxxxxxxxxxxx", 20), 0);
+        ASSERT_EQ(strncmp((char *)(entry.value), "xxxxxxxxxxxxxxxxxxxx", 20), 0);
         ql_verify(ql, 157, 5001, 32, 9);
         ql_release_iterator(iter);
         quicklistRelease(ql);
@@ -1266,26 +1266,26 @@ TEST_F(QuicklistTest, quicklistNumbersLargerListRead) {
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistNumbersLargerListReadB) {
     for (int _i = 0; _i < option_count; _i++) {
         long long start = mstime();
         quicklist *ql = quicklistNew(-2, options[_i]);
-        quicklistPushTail(ql, const_cast<char *>("99"), 2);
-        quicklistPushTail(ql, const_cast<char *>("98"), 2);
-        quicklistPushTail(ql, const_cast<char *>("xxxxxxxxxxxxxxxxxxxx"), 20);
-        quicklistPushTail(ql, const_cast<char *>("96"), 2);
-        quicklistPushTail(ql, const_cast<char *>("95"), 2);
-        quicklistReplaceAtIndex(ql, 1, const_cast<char *>("foo"), 3);
-        quicklistReplaceAtIndex(ql, -1, const_cast<char *>("bar"), 3);
+        quicklistPushTail(ql, (char *)("99"), 2);
+        quicklistPushTail(ql, (char *)("98"), 2);
+        quicklistPushTail(ql, (char *)("xxxxxxxxxxxxxxxxxxxx"), 20);
+        quicklistPushTail(ql, (char *)("96"), 2);
+        quicklistPushTail(ql, (char *)("95"), 2);
+        quicklistReplaceAtIndex(ql, 1, (char *)("foo"), 3);
+        quicklistReplaceAtIndex(ql, -1, (char *)("bar"), 3);
         quicklistRelease(ql);
 
         long long stop = mstime();
         runtime[_i] += stop - start;
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
@@ -1294,14 +1294,14 @@ TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
         long long start = mstime();
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
-            char *words[] = {const_cast<char *>("abc"), const_cast<char *>("foo"), const_cast<char *>("bar"),
-                             const_cast<char *>("foobar"), const_cast<char *>("foobared"), const_cast<char *>("zap"),
-                             const_cast<char *>("bar"), const_cast<char *>("test"), const_cast<char *>("foo")};
-            char *result[] = {const_cast<char *>("abc"), const_cast<char *>("foo"), const_cast<char *>("foobar"),
-                              const_cast<char *>("foobared"), const_cast<char *>("zap"), const_cast<char *>("test"),
-                              const_cast<char *>("foo")};
-            char *resultB[] = {const_cast<char *>("abc"), const_cast<char *>("foo"), const_cast<char *>("foobar"),
-                               const_cast<char *>("foobared"), const_cast<char *>("zap"), const_cast<char *>("test")};
+            char *words[] = {(char *)("abc"), (char *)("foo"), (char *)("bar"),
+                             (char *)("foobar"), (char *)("foobared"), (char *)("zap"),
+                             (char *)("bar"), (char *)("test"), (char *)("foo")};
+            char *result[] = {(char *)("abc"), (char *)("foo"), (char *)("foobar"),
+                              (char *)("foobared"), (char *)("zap"), (char *)("test"),
+                              (char *)("foo")};
+            char *resultB[] = {(char *)("abc"), (char *)("foo"), (char *)("foobar"),
+                               (char *)("foobared"), (char *)("zap"), (char *)("test")};
             for (int i = 0; i < 9; i++) quicklistPushTail(ql, words[i], strlen(words[i]));
 
             /* lrem 0 bar */
@@ -1309,7 +1309,7 @@ TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
             quicklistEntry entry;
             int i = 0;
             while (quicklistNext(iter, &entry)) {
-                if (quicklistCompare(&entry, reinterpret_cast<unsigned char *>(const_cast<char *>("bar")), 3)) {
+                if (quicklistCompare(&entry, (unsigned char *)("bar"), 3)) {
                     quicklistDelEntry(iter, &entry);
                 }
                 i++;
@@ -1322,22 +1322,22 @@ TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
             while (quicklistNext(iter, &entry)) {
                 /* Result must be: abc, foo, foobar, foobared, zap, test, foo */
                 int sz = entry.sz;
-                if (strncmp(reinterpret_cast<char *>(entry.value), result[i], entry.sz)) {
-                    FAIL() << "No match at position " << i << ", got " << std::string(reinterpret_cast<char *>(entry.value), sz)
+                if (strncmp((char *)(entry.value), result[i], entry.sz)) {
+                    FAIL() << "No match at position " << i << ", got " << std::string((char *)(entry.value), sz)
                            << " instead of " << result[i];
                 }
                 i++;
             }
             ql_release_iterator(iter);
 
-            quicklistPushTail(ql, const_cast<char *>("foo"), 3);
+            quicklistPushTail(ql, (char *)("foo"), 3);
 
             /* lrem -2 foo */
             iter = quicklistGetIterator(ql, AL_START_TAIL);
             i = 0;
             int del = 2;
             while (quicklistNext(iter, &entry)) {
-                if (quicklistCompare(&entry, reinterpret_cast<unsigned char *>(const_cast<char *>("foo")), 3)) {
+                if (quicklistCompare(&entry, (unsigned char *)("foo"), 3)) {
                     quicklistDelEntry(iter, &entry);
                     del--;
                 }
@@ -1352,8 +1352,8 @@ TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
             size_t resB = sizeof(resultB) / sizeof(*resultB);
             while (quicklistNext(iter, &entry)) {
                 int sz = entry.sz;
-                if (strncmp(reinterpret_cast<char *>(entry.value), resultB[resB - 1 - i], sz)) {
-                    FAIL() << "No match at position " << i << ", got " << std::string(reinterpret_cast<char *>(entry.value), sz)
+                if (strncmp((char *)(entry.value), resultB[resB - 1 - i], sz)) {
+                    FAIL() << "No match at position " << i << ", got " << std::string((char *)(entry.value), sz)
                            << " instead of " << resultB[resB - 1 - i];
                 }
                 i++;
@@ -1367,7 +1367,7 @@ TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
         runtime[_i] += stop - start;
     }
     UNUSED(iter);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIterateReverseDeleteAtCompress) {
@@ -1376,17 +1376,17 @@ TEST_F(QuicklistTest, quicklistIterateReverseDeleteAtCompress) {
         long long start = mstime();
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
-            quicklistPushTail(ql, const_cast<char *>("abc"), 3);
-            quicklistPushTail(ql, const_cast<char *>("def"), 3);
-            quicklistPushTail(ql, const_cast<char *>("hij"), 3);
-            quicklistPushTail(ql, const_cast<char *>("jkl"), 3);
-            quicklistPushTail(ql, const_cast<char *>("oop"), 3);
+            quicklistPushTail(ql, (char *)("abc"), 3);
+            quicklistPushTail(ql, (char *)("def"), 3);
+            quicklistPushTail(ql, (char *)("hij"), 3);
+            quicklistPushTail(ql, (char *)("jkl"), 3);
+            quicklistPushTail(ql, (char *)("oop"), 3);
 
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIterator(ql, AL_START_TAIL);
             int i = 0;
             while (quicklistNext(iter, &entry)) {
-                if (quicklistCompare(&entry, reinterpret_cast<unsigned char *>(const_cast<char *>("hij")), 3)) {
+                if (quicklistCompare(&entry, (unsigned char *)("hij"), 3)) {
                     quicklistDelEntry(iter, &entry);
                 }
                 i++;
@@ -1400,10 +1400,10 @@ TEST_F(QuicklistTest, quicklistIterateReverseDeleteAtCompress) {
             /* Check results after deletion of "hij" */
             iter = quicklistGetIterator(ql, AL_START_HEAD);
             i = 0;
-            char *vals[] = {const_cast<char *>("abc"), const_cast<char *>("def"), const_cast<char *>("jkl"),
-                            const_cast<char *>("oop")};
+            char *vals[] = {(char *)("abc"), (char *)("def"), (char *)("jkl"),
+                            (char *)("oop")};
             while (quicklistNext(iter, &entry)) {
-                if (!quicklistCompare(&entry, reinterpret_cast<unsigned char *>(vals[i]), 3)) {
+                if (!quicklistCompare(&entry, (unsigned char *)(vals[i]), 3)) {
                     FAIL() << "Value at " << i << " didn't match " << vals[i];
                 }
                 i++;
@@ -1416,7 +1416,7 @@ TEST_F(QuicklistTest, quicklistIterateReverseDeleteAtCompress) {
         runtime[_i] += stop - start;
     }
     UNUSED(iter);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistIteratorAtIndexTestAtCompress) {
@@ -1426,7 +1426,7 @@ TEST_F(QuicklistTest, quicklistIteratorAtIndexTestAtCompress) {
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
             char num[32];
-            long long *nums = static_cast<long long *>(zmalloc(sizeof(long long) * 760));
+            long long *nums = (long long *)(zmalloc(sizeof(long long) * 760));
             for (int i = 0; i < 760; i++) {
                 nums[i] = -5157318210846258176 + i;
                 int sz = ll2string(num, sizeof(num), nums[i]);
@@ -1451,7 +1451,7 @@ TEST_F(QuicklistTest, quicklistIteratorAtIndexTestAtCompress) {
         runtime[_i] += stop - start;
     }
     UNUSED(iter);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistLtrimTestAAtCompress) {
@@ -1461,7 +1461,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestAAtCompress) {
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
             char num[32];
-            long long *nums = static_cast<long long *>(zmalloc(sizeof(long long) * 32));
+            long long *nums = (long long *)(zmalloc(sizeof(long long) * 32));
             for (int i = 0; i < 32; i++) {
                 nums[i] = -5157318210846258176 + i;
                 int sz = ll2string(num, sizeof(num), nums[i]);
@@ -1488,7 +1488,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestAAtCompress) {
         runtime[_i] += stop - start;
     }
     UNUSED(iter);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistLtrimTestBAtCompress) {
@@ -1500,7 +1500,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestBAtCompress) {
              * integers don't compress and the check always fails. */
             quicklist *ql = quicklistNew(fills[f], QUICKLIST_NOCOMPRESS);
             char num[32];
-            long long *nums = static_cast<long long *>(zmalloc(sizeof(long long) * 33));
+            long long *nums = (long long *)(zmalloc(sizeof(long long) * 33));
             for (int i = 0; i < 33; i++) {
                 nums[i] = i;
                 int sz = ll2string(num, sizeof(num), nums[i]);
@@ -1523,13 +1523,13 @@ TEST_F(QuicklistTest, quicklistLtrimTestBAtCompress) {
             if (entry.longval != 16) {
                 FAIL() << "B! got instead: " << entry.longval;
             }
-            quicklistPushTail(ql, const_cast<char *>("bobobob"), 7);
+            quicklistPushTail(ql, (char *)("bobobob"), 7);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
             int sz = entry.sz;
-            if (strncmp(reinterpret_cast<char *>(entry.value), "bobobob", 7)) {
-                FAIL() << "Tail doesn't match bobobob, it's " << std::string(reinterpret_cast<char *>(entry.value), sz)
+            if (strncmp((char *)(entry.value), "bobobob", 7)) {
+                FAIL() << "Tail doesn't match bobobob, it's " << std::string((char *)(entry.value), sz)
                        << " instead";
             }
             ql_release_iterator(iter);
@@ -1550,7 +1550,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestBAtCompress) {
         runtime[_i] += stop - start;
     }
     UNUSED(iter);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistLtrimTestCAtCompress) {
@@ -1560,7 +1560,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestCAtCompress) {
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
             char num[32];
-            long long *nums = static_cast<long long *>(zmalloc(sizeof(long long) * 33));
+            long long *nums = (long long *)(zmalloc(sizeof(long long) * 33));
             for (int i = 0; i < 33; i++) {
                 nums[i] = -5157318210846258176 + i;
                 int sz = ll2string(num, sizeof(num), nums[i]);
@@ -1585,7 +1585,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestCAtCompress) {
         runtime[_i] += stop - start;
     }
     UNUSED(iter);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistLtrimTestDAtCompress) {
@@ -1595,7 +1595,7 @@ TEST_F(QuicklistTest, quicklistLtrimTestDAtCompress) {
         for (int f = 0; f < fill_count; f++) {
             quicklist *ql = quicklistNew(fills[f], options[_i]);
             char num[32];
-            long long *nums = static_cast<long long *>(zmalloc(sizeof(long long) * 33));
+            long long *nums = (long long *)(zmalloc(sizeof(long long) * 33));
             for (int i = 0; i < 33; i++) {
                 nums[i] = -5157318210846258176 + i;
                 int sz = ll2string(num, sizeof(num), nums[i]);
@@ -1614,13 +1614,13 @@ TEST_F(QuicklistTest, quicklistLtrimTestDAtCompress) {
         runtime[_i] += stop - start;
     }
     UNUSED(iter);
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 TEST_F(QuicklistTest, quicklistVerifySpecificCompressionOfInteriorNodes) {
     /* Run a longer test of compression depth outside of primary test loop. */
     int list_sizes[] = {250, 251, 500, 999, 1000};
-    int list_count = accurate ? static_cast<int>(sizeof(list_sizes) / sizeof(*list_sizes)) : 1;
+    int list_count = accurate ? (int)(sizeof(list_sizes) / sizeof(*list_sizes)) : 1;
     for (int list = 0; list < list_count; list++) {
         for (int f = 0; f < fill_count; f++) {
             for (int depth = 1; depth < 40; depth++) {
@@ -1636,9 +1636,9 @@ TEST_F(QuicklistTest, quicklistVerifySpecificCompressionOfInteriorNodes) {
                     if (step == 1) {
                         for (int i = 0; i < list_sizes[list] / 2; i++) {
                             unsigned char *data;
-                            EXPECT_TRUE(quicklistPop(ql, QUICKLIST_HEAD, &data, nullptr, nullptr));
+                            ASSERT_TRUE(quicklistPop(ql, QUICKLIST_HEAD, &data, nullptr, nullptr));
                             zfree(data);
-                            EXPECT_TRUE(quicklistPop(ql, QUICKLIST_TAIL, &data, nullptr, nullptr));
+                            ASSERT_TRUE(quicklistPop(ql, QUICKLIST_TAIL, &data, nullptr, nullptr));
                             zfree(data);
                         }
                     }
@@ -1667,7 +1667,7 @@ TEST_F(QuicklistTest, quicklistVerifySpecificCompressionOfInteriorNodes) {
             }
         }
     }
-    EXPECT_EQ(err, 0u);
+    ASSERT_EQ(err, 0u);
 }
 
 /*-----------------------------------------------------------------------------
@@ -1676,66 +1676,66 @@ TEST_F(QuicklistTest, quicklistVerifySpecificCompressionOfInteriorNodes) {
 
 TEST_F(QuicklistTest, quicklistBookmarkGetUpdatedToNextItem) {
     quicklist *ql = quicklistNew(1, 0);
-    quicklistPushTail(ql, const_cast<char *>("1"), 1);
-    quicklistPushTail(ql, const_cast<char *>("2"), 1);
-    quicklistPushTail(ql, const_cast<char *>("3"), 1);
-    quicklistPushTail(ql, const_cast<char *>("4"), 1);
-    quicklistPushTail(ql, const_cast<char *>("5"), 1);
-    EXPECT_EQ(ql->len, 5u);
+    quicklistPushTail(ql, (char *)("1"), 1);
+    quicklistPushTail(ql, (char *)("2"), 1);
+    quicklistPushTail(ql, (char *)("3"), 1);
+    quicklistPushTail(ql, (char *)("4"), 1);
+    quicklistPushTail(ql, (char *)("5"), 1);
+    ASSERT_EQ(ql->len, 5u);
     /* add two bookmarks, one pointing to the node before the last. */
-    EXPECT_TRUE(quicklistBookmarkCreate(&ql, "_dummy", ql->head->next));
-    EXPECT_TRUE(quicklistBookmarkCreate(&ql, "_test", ql->tail->prev));
+    ASSERT_TRUE(quicklistBookmarkCreate(&ql, "_dummy", ql->head->next));
+    ASSERT_TRUE(quicklistBookmarkCreate(&ql, "_test", ql->tail->prev));
     /* test that the bookmark returns the right node, delete it and see that the bookmark points to the last node */
-    EXPECT_EQ(quicklistBookmarkFind(ql, "_test"), ql->tail->prev);
-    EXPECT_TRUE(quicklistDelRange(ql, -2, 1));
-    EXPECT_EQ(quicklistBookmarkFind(ql, "_test"), ql->tail);
+    ASSERT_EQ(quicklistBookmarkFind(ql, "_test"), ql->tail->prev);
+    ASSERT_TRUE(quicklistDelRange(ql, -2, 1));
+    ASSERT_EQ(quicklistBookmarkFind(ql, "_test"), ql->tail);
     /* delete the last node, and see that the bookmark was deleted. */
-    EXPECT_TRUE(quicklistDelRange(ql, -1, 1));
-    EXPECT_EQ(quicklistBookmarkFind(ql, "_test"), nullptr);
+    ASSERT_TRUE(quicklistDelRange(ql, -1, 1));
+    ASSERT_EQ(quicklistBookmarkFind(ql, "_test"), nullptr);
     /* test that other bookmarks aren't affected */
-    EXPECT_EQ(quicklistBookmarkFind(ql, "_dummy"), ql->head->next);
-    EXPECT_EQ(quicklistBookmarkFind(ql, "_missing"), nullptr);
-    EXPECT_EQ(ql->len, 3u);
+    ASSERT_EQ(quicklistBookmarkFind(ql, "_dummy"), ql->head->next);
+    ASSERT_EQ(quicklistBookmarkFind(ql, "_missing"), nullptr);
+    ASSERT_EQ(ql->len, 3u);
     quicklistBookmarksClear(ql); /* for coverage */
-    EXPECT_EQ(quicklistBookmarkFind(ql, "_dummy"), nullptr);
+    ASSERT_EQ(quicklistBookmarkFind(ql, "_dummy"), nullptr);
     quicklistRelease(ql);
 }
 
 TEST_F(QuicklistTest, quicklistBookmarkLimit) {
     int i;
     quicklist *ql = quicklistNew(1, 0);
-    quicklistPushHead(ql, const_cast<char *>("1"), 1);
+    quicklistPushHead(ql, (char *)("1"), 1);
     for (i = 0; i < QL_MAX_BM; i++)
-        EXPECT_TRUE(quicklistBookmarkCreate(&ql, genstr("", i), ql->head));
+        ASSERT_TRUE(quicklistBookmarkCreate(&ql, genstr("", i), ql->head));
     /* when all bookmarks are used, creation fails */
-    EXPECT_FALSE(quicklistBookmarkCreate(&ql, "_test", ql->head));
+    ASSERT_FALSE(quicklistBookmarkCreate(&ql, "_test", ql->head));
     /* delete one and see that we can now create another */
-    EXPECT_TRUE(quicklistBookmarkDelete(ql, "0"));
-    EXPECT_TRUE(quicklistBookmarkCreate(&ql, "_test", ql->head));
+    ASSERT_TRUE(quicklistBookmarkDelete(ql, "0"));
+    ASSERT_TRUE(quicklistBookmarkCreate(&ql, "_test", ql->head));
     /* delete one and see that the rest survive */
-    EXPECT_TRUE(quicklistBookmarkDelete(ql, "_test"));
+    ASSERT_TRUE(quicklistBookmarkDelete(ql, "_test"));
     for (i = 1; i < QL_MAX_BM; i++)
-        EXPECT_EQ(quicklistBookmarkFind(ql, genstr("", i)), ql->head);
+        ASSERT_EQ(quicklistBookmarkFind(ql, genstr("", i)), ql->head);
     /* make sure the deleted ones are indeed gone */
-    EXPECT_FALSE(quicklistBookmarkFind(ql, "0"));
-    EXPECT_FALSE(quicklistBookmarkFind(ql, "_test"));
+    ASSERT_FALSE(quicklistBookmarkFind(ql, "0"));
+    ASSERT_FALSE(quicklistBookmarkFind(ql, "_test"));
     quicklistRelease(ql);
 }
 
 TEST_F(QuicklistTest, quicklistCompressAndDecompressQuicklistListpackNode) {
     if (!large_memory) GTEST_SKIP() << "Skipping large memory test";
 
-    quicklistNode *node = gtest_quicklistCreateNode();
+    quicklistNode *node = testOnlyQuicklistCreateNode();
     node->entry = lpNew(0);
 
     /* Just to avoid triggering the assertion in __quicklistCompressNode(),
      * it disables the passing of quicklist head or tail node. */
-    node->prev = gtest_quicklistCreateNode();
-    node->next = gtest_quicklistCreateNode();
+    node->prev = testOnlyQuicklistCreateNode();
+    node->next = testOnlyQuicklistCreateNode();
 
     /* Create a rand string */
     size_t sz = (1 << 25); /* 32MB per one entry */
-    unsigned char *s = static_cast<unsigned char *>(zmalloc(sz));
+    unsigned char *s = (unsigned char *)(zmalloc(sz));
     randstring(s, sz);
 
     /* Keep filling the node, until it reaches 1GB */
@@ -1744,10 +1744,10 @@ TEST_F(QuicklistTest, quicklistCompressAndDecompressQuicklistListpackNode) {
         node->sz = lpBytes(node->entry);
 
         long long start = mstime();
-        EXPECT_TRUE(gtest_quicklistCompressNode(node));
-        EXPECT_TRUE(gtest_quicklistDecompressNode(node));
+        ASSERT_TRUE(testOnlyQuicklistCompressNode(node));
+        ASSERT_TRUE(testOnlyQuicklistDecompressNode(node));
         std::cout << "Compress and decompress: " << node->sz / 1024 / 1024 << " MB in "
-                  << static_cast<float>(mstime() - start) / 1000 << " seconds." << std::endl;
+                  << (float)(mstime() - start) / 1000 << " seconds." << std::endl;
     }
 
     zfree(s);
@@ -1763,26 +1763,26 @@ TEST_F(QuicklistTest, quicklistCompressAndDecomressQuicklistPlainNodeLargeThanUI
 #if ULONG_MAX >= 0xffffffffffffffff
 
     size_t sz = (1ull << 32);
-    unsigned char *s = static_cast<unsigned char *>(zmalloc(sz));
+    unsigned char *s = (unsigned char *)(zmalloc(sz));
     randstring(s, sz);
     memcpy(s, "helloworld", 10);
     memcpy(s + sz - 10, "1234567890", 10);
 
-    quicklistNode *node = gtest_quicklistCreateNodeWithValue(QUICKLIST_NODE_CONTAINER_PLAIN, s, sz);
+    quicklistNode *node = testOnlyQuicklistCreateNodeWithValue(QUICKLIST_NODE_CONTAINER_PLAIN, s, sz);
 
     /* Just to avoid triggering the assertion in __quicklistCompressNode(),
      * it disables the passing of quicklist head or tail node. */
-    node->prev = gtest_quicklistCreateNode();
-    node->next = gtest_quicklistCreateNode();
+    node->prev = testOnlyQuicklistCreateNode();
+    node->next = testOnlyQuicklistCreateNode();
 
     long long start = mstime();
-    EXPECT_TRUE(gtest_quicklistCompressNode(node));
-    EXPECT_TRUE(gtest_quicklistDecompressNode(node));
+    ASSERT_TRUE(testOnlyQuicklistCompressNode(node));
+    ASSERT_TRUE(testOnlyQuicklistDecompressNode(node));
     std::cout << "Compress and decompress: " << node->sz / 1024 / 1024 << " MB in "
-              << static_cast<float>(mstime() - start) / 1000 << " seconds." << std::endl;
+              << (float)(mstime() - start) / 1000 << " seconds." << std::endl;
 
-    EXPECT_EQ(memcmp(node->entry, "helloworld", 10), 0);
-    EXPECT_EQ(memcmp(node->entry + sz - 10, "1234567890", 10), 0);
+    ASSERT_EQ(memcmp(node->entry, "helloworld", 10), 0);
+    ASSERT_EQ(memcmp(node->entry + sz - 10, "1234567890", 10), 0);
     zfree(node->prev);
     zfree(node->next);
     zfree(node->entry);

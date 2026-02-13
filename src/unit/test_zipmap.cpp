@@ -38,26 +38,30 @@ TEST_F(ZipmapTest, zipmapIterateWithLargeKey) {
                 "\x04\x00"
                 "long"
                 "\xff";
-    EXPECT_TRUE(zipmapValidateIntegrity(reinterpret_cast<unsigned char *>(zm), sizeof zm - 1, 1));
+    ASSERT_TRUE(zipmapValidateIntegrity((unsigned char *)(zm), sizeof zm - 1, 1));
 
-    unsigned char *p = zipmapRewind(reinterpret_cast<unsigned char *>(zm));
+    unsigned char *p = zipmapRewind((unsigned char *)(zm));
     unsigned char *key, *value;
     unsigned int klen, vlen;
     char buf[512];
     memset(buf, 'a', 512);
-    char *expected_key[] = {const_cast<char *>("name"), const_cast<char *>("surname"), const_cast<char *>("noval"), buf};
-    char *expected_value[] = {const_cast<char *>("foo"), const_cast<char *>("foo"), nullptr, const_cast<char *>("long")};
+    char *expected_key[] = {(char *)("name"), (char *)("surname"), (char *)("noval"), buf};
+    char *expected_value[] = {(char *)("foo"), (char *)("foo"), nullptr, (char *)("long")};
     unsigned int expected_klen[] = {4, 7, 5, 512};
     unsigned int expected_vlen[] = {3, 3, 0, 4};
     int iter = 0;
 
     while ((p = zipmapNext(p, &key, &klen, &value, &vlen)) != nullptr) {
         char *tmp = expected_key[iter];
-        EXPECT_EQ(klen, expected_klen[iter]);
-        EXPECT_EQ(strncmp(tmp, reinterpret_cast<const char *>(key), klen), 0);
+        ASSERT_EQ(klen, expected_klen[iter]);
+        ASSERT_EQ(strncmp(tmp, (const char *)(key), klen), 0);
         tmp = expected_value[iter];
-        EXPECT_EQ(vlen, expected_vlen[iter]);
-        EXPECT_EQ(strncmp(tmp, reinterpret_cast<const char *>(value), vlen), 0);
+        ASSERT_EQ(vlen, expected_vlen[iter]);
+        if (tmp == nullptr) {
+            ASSERT_EQ(vlen, 0u);
+        } else {
+            ASSERT_EQ(strncmp(tmp, (const char *)(value), vlen), 0);
+        }
         iter++;
     }
 }
@@ -88,24 +92,24 @@ TEST_F(ZipmapTest, zipmapIterateThroughElements) {
                 "noval"
                 "\x00\x00"
                 "\xff";
-    EXPECT_TRUE(zipmapValidateIntegrity(reinterpret_cast<unsigned char *>(zm), sizeof zm - 1, 1));
+    ASSERT_TRUE(zipmapValidateIntegrity((unsigned char *)(zm), sizeof zm - 1, 1));
 
-    unsigned char *i = zipmapRewind(reinterpret_cast<unsigned char *>(zm));
+    unsigned char *i = zipmapRewind((unsigned char *)(zm));
     unsigned char *key, *value;
     unsigned int klen, vlen;
-    char *expected_key[] = {const_cast<char *>("name"), const_cast<char *>("surname"), const_cast<char *>("age"), const_cast<char *>("hello"), const_cast<char *>("foo"), const_cast<char *>("noval")};
-    char *expected_value[] = {const_cast<char *>("foo"), const_cast<char *>("foo"), const_cast<char *>("foo"), const_cast<char *>("world!"), const_cast<char *>("12345"), const_cast<char *>("")};
+    char *expected_key[] = {(char *)("name"), (char *)("surname"), (char *)("age"), (char *)("hello"), (char *)("foo"), (char *)("noval")};
+    char *expected_value[] = {(char *)("foo"), (char *)("foo"), (char *)("foo"), (char *)("world!"), (char *)("12345"), (char *)("")};
     unsigned int expected_klen[] = {4, 7, 3, 5, 3, 5};
     unsigned int expected_vlen[] = {3, 3, 3, 6, 5, 0};
     int iter = 0;
 
     while ((i = zipmapNext(i, &key, &klen, &value, &vlen)) != nullptr) {
         char *tmp = expected_key[iter];
-        EXPECT_EQ(klen, expected_klen[iter]);
-        EXPECT_EQ(strncmp(tmp, reinterpret_cast<const char *>(key), klen), 0);
+        ASSERT_EQ(klen, expected_klen[iter]);
+        ASSERT_EQ(strncmp(tmp, (const char *)(key), klen), 0);
         tmp = expected_value[iter];
-        EXPECT_EQ(vlen, expected_vlen[iter]);
-        EXPECT_EQ(strncmp(tmp, reinterpret_cast<const char *>(value), vlen), 0);
+        ASSERT_EQ(vlen, expected_vlen[iter]);
+        ASSERT_EQ(strncmp(tmp, (const char *)(value), vlen), 0);
         iter++;
     }
 }

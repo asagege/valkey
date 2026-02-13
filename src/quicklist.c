@@ -1689,23 +1689,24 @@ void quicklistBookmarksClear(quicklist *ql) {
      * function is just before releasing the allocation. */
 }
 
-/* Wrapper functions for gtest to access static internals */
-size_t gtest_quicklist_node_neg_fill_limit(int fill) {
+/* Wrapper functions for gtest to access static internals. */
+
+size_t testOnlyQuicklistNodeNegFillLimit(int fill) {
     return quicklistNodeNegFillLimit(fill);
 }
 
-quicklistNode *gtest_quicklistCreateNode(void) {
+quicklistNode *testOnlyQuicklistCreateNode(void) {
     return quicklistCreateNode();
 }
 
-quicklistNode *gtest_quicklistCreateNodeWithValue(int container, void *value, size_t sz) {
+quicklistNode *testOnlyQuicklistCreateNodeWithValue(int container, void *value, size_t sz) {
     return __quicklistCreateNode(container, value, sz);
 }
 
-int gtest_quicklistCompressNode(quicklistNode *node) {
+int testOnlyQuicklistCompressNode(quicklistNode *node) {
     return __quicklistCompressNode(node);
 }
 
-int gtest_quicklistDecompressNode(quicklistNode *node) {
+int testOnlyQuicklistDecompressNode(quicklistNode *node) {
     return __quicklistDecompressNode(node);
 }

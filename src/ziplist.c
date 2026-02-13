@@ -1645,7 +1645,7 @@ unsigned int ziplistRandomPairsUnique(unsigned char *zl, unsigned int count, zip
     return picked;
 }
 
-/* Wrapper function for gtest to access static zipEntry function */
-void gtest_zipEntry(unsigned char *p, zlentry *e) {
+/* Wrapper function for gtest to access static zipEntry function. */
+void testOnlyZipEntry(unsigned char *p, zlentry *e) {
     zipEntry(p, e);
 }

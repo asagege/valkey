@@ -31,21 +31,21 @@ class MutexQueueTest : public ::testing::Test {
     /* Helper function to add a value and verify the length increases */
     void add(long value) {
         unsigned long len = mutexQueueLength(q);
-        mutexQueueAdd(q, reinterpret_cast<void *>(value));
+        mutexQueueAdd(q, (void *)(value));
         EXPECT_EQ(mutexQueueLength(q), len + 1);
     }
 
     /* Helper function to add a priority value and verify the length increases */
     void priorityAdd(long value) {
         unsigned long len = mutexQueueLength(q);
-        mutexQueuePushPriority(q, reinterpret_cast<void *>(value));
+        mutexQueuePushPriority(q, (void *)(value));
         EXPECT_EQ(mutexQueueLength(q), len + 1);
     }
 
     /* Helper function to pop and verify the expected value */
     void popTest(long expected) {
         unsigned long len = mutexQueueLength(q);
-        long value = reinterpret_cast<long>(mutexQueuePop(q, false));
+        long value = (long)(mutexQueuePop(q, false));
         EXPECT_EQ(mutexQueueLength(q), len - 1);
         EXPECT_EQ(value, expected);
     }
@@ -94,10 +94,10 @@ TEST_F(MutexQueueTest, TestMutexQueueFifoPopAll) {
     EXPECT_EQ(mutexQueueLength(q), 0ul);
 
     void *ptr;
-    EXPECT_TRUE(fifoPop(f, &ptr) && reinterpret_cast<unsigned long>(ptr) == 1ul);
-    EXPECT_TRUE(fifoPop(f, &ptr) && reinterpret_cast<unsigned long>(ptr) == 2ul);
-    EXPECT_TRUE(fifoPop(f, &ptr) && reinterpret_cast<unsigned long>(ptr) == 10ul);
-    EXPECT_TRUE(fifoPop(f, &ptr) && reinterpret_cast<unsigned long>(ptr) == 11ul);
+    EXPECT_TRUE(fifoPop(f, &ptr) && (unsigned long)(ptr) == 1ul);
+    EXPECT_TRUE(fifoPop(f, &ptr) && (unsigned long)(ptr) == 2ul);
+    EXPECT_TRUE(fifoPop(f, &ptr) && (unsigned long)(ptr) == 10ul);
+    EXPECT_TRUE(fifoPop(f, &ptr) && (unsigned long)(ptr) == 11ul);
     EXPECT_EQ(fifoLength(f), 0);
 
     fifoRelease(f);
@@ -108,8 +108,8 @@ TEST_F(MutexQueueTest, TestMutexQueueFifoAddMultiple) {
     add(1);
 
     fifo *f = fifoCreate();
-    fifoPush(f, reinterpret_cast<void *>(2));
-    fifoPush(f, reinterpret_cast<void *>(3));
+    fifoPush(f, (void *)(2));
+    fifoPush(f, (void *)(3));
     mutexQueueAddMultiple(q, f);
     EXPECT_EQ(fifoLength(f), 0L);
     fifoRelease(f);
@@ -127,18 +127,18 @@ TEST_F(MutexQueueTest, TestMutexQueueFifoAddMultiple) {
 
 /* Thread functions for concurrent tests */
 static void *queue_writer(void *arg) {
-    mutexQueue *queue = static_cast<mutexQueue *>(arg);
+    mutexQueue *queue = (mutexQueue *)(arg);
     for (int i = 1; i <= 1000; i++) {
-        mutexQueueAdd(queue, reinterpret_cast<void *>(static_cast<long>(i)));
+        mutexQueueAdd(queue, (void *)((long)(i)));
     }
     return nullptr;
 }
 
 static void *queue_reader(void *arg) {
-    mutexQueue *queue = static_cast<mutexQueue *>(arg);
+    mutexQueue *queue = (mutexQueue *)(arg);
     int count = 0;
     while (count < 1000) {
-        long value = reinterpret_cast<long>(mutexQueuePop(queue, true));
+        long value = (long)(mutexQueuePop(queue, true));
         EXPECT_NE(value, 0); /* Should never be null if blocking */
         count++;
     }
@@ -187,7 +187,7 @@ TEST_F(MutexQueueTest, TestMutexQueueParallelWriters) {
         ASSERT_EQ(rc, 0);
     }
 
-    EXPECT_EQ(mutexQueueLength(q), static_cast<unsigned long>(num_threads * 1000));
+    EXPECT_EQ(mutexQueueLength(q), (unsigned long)(num_threads * 1000));
 
     fifo *f = mutexQueuePopAll(q, false);
     fifoRelease(f);

@@ -34,38 +34,38 @@ TEST_F(VectorTest, TestVector) {
     vectorInit(&struct_vector, 128, sizeof(test_struct));
 
     for (uint64_t i = 0; i < 128; i++) {
-        uint8_t *uint8_item = static_cast<uint8_t *>(vectorPush(&uint8_vector));
+        uint8_t *uint8_item = (uint8_t *)(vectorPush(&uint8_vector));
         *uint8_item = i;
 
-        uint64_t *uint64_item = static_cast<uint64_t *>(vectorPush(&uint64_vector));
+        uint64_t *uint64_item = (uint64_t *)(vectorPush(&uint64_vector));
         *uint64_item = i * 1000;
 
-        test_struct *struct_item = static_cast<test_struct *>(vectorPush(&struct_vector));
+        test_struct *struct_item = (test_struct *)(vectorPush(&struct_vector));
         struct_item->uint8 = i;
         struct_item->uint64 = i * 1000;
     }
 
     /* uint8_vector length */
-    EXPECT_EQ(vectorLen(&uint8_vector), 128u);
+    ASSERT_EQ(vectorLen(&uint8_vector), 128u);
     /* uint64_vector length */
-    EXPECT_EQ(vectorLen(&uint64_vector), 128u);
+    ASSERT_EQ(vectorLen(&uint64_vector), 128u);
     /* struct_vector length */
-    EXPECT_EQ(vectorLen(&struct_vector), 128u);
+    ASSERT_EQ(vectorLen(&struct_vector), 128u);
 
     for (uint32_t i = 0; i < vectorLen(&uint8_vector); i++) {
-        uint8_t *uint8_item = static_cast<uint8_t *>(vectorGet(&uint8_vector, i));
+        uint8_t *uint8_item = (uint8_t *)(vectorGet(&uint8_vector, i));
         /* uint8_item value */
-        EXPECT_EQ(*uint8_item, i);
+        ASSERT_EQ(*uint8_item, i);
 
-        uint64_t *uint64_item = static_cast<uint64_t *>(vectorGet(&uint64_vector, i));
+        uint64_t *uint64_item = (uint64_t *)(vectorGet(&uint64_vector, i));
         /* uint64_item value */
-        EXPECT_EQ(*uint64_item, i * 1000);
+        ASSERT_EQ(*uint64_item, i * 1000);
 
-        test_struct *struct_item = static_cast<test_struct *>(vectorGet(&struct_vector, i));
+        test_struct *struct_item = (test_struct *)(vectorGet(&struct_vector, i));
         /* struct_item uint8 value */
-        EXPECT_EQ(struct_item->uint8, i);
+        ASSERT_EQ(struct_item->uint8, i);
         /* struct_item uint64 value */
-        EXPECT_EQ(struct_item->uint64, i * 1000);
+        ASSERT_EQ(struct_item->uint64, i * 1000);
     }
 
     vectorCleanup(&uint8_vector);

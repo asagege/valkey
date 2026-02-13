@@ -6546,66 +6546,66 @@ void ioThreadWriteToClient(void *data) {
 /* These wrapper functions expose static functions for use in GoogleTest unit tests.
  * They are non-static wrappers that simply call the corresponding static functions. */
 
-void gtest_postWriteToReplica(client *c) {
+void testOnlyPostWriteToReplica(client *c) {
     postWriteToReplica(c);
 }
 
-void gtest_writeToReplica(client *c) {
+void testOnlyWriteToReplica(client *c) {
     writeToReplica(c);
 }
 
-void gtest_backupAndUpdateClientArgv(client *c, int new_argc, robj **new_argv) {
+void testOnlyBackupAndUpdateClientArgv(client *c, int new_argc, robj **new_argv) {
     backupAndUpdateClientArgv(c, new_argc, new_argv);
 }
 
-size_t gtest_upsertPayloadHeader(char *buf, size_t *bufpos, payloadHeader **last_header, uint8_t type, size_t len, int slot, size_t available) {
+size_t testOnlyUpsertPayloadHeader(char *buf, size_t *bufpos, payloadHeader **last_header, uint8_t type, size_t len, int slot, size_t available) {
     return upsertPayloadHeader(buf, bufpos, last_header, type, len, slot, 0, available);
 }
 
-int gtest_isCopyAvoidPreferred(client *c, robj *obj) {
+int testOnlyIsCopyAvoidPreferred(client *c, robj *obj) {
     return isCopyAvoidPreferred(c, obj);
 }
 
-size_t gtest_addReplyPayloadToBuffer(client *c, const void *payload, size_t len, uint8_t payload_type) {
+size_t testOnlyAddReplyPayloadToBuffer(client *c, const void *payload, size_t len, uint8_t payload_type) {
     return _addReplyPayloadToBuffer(c, payload, len, payload_type);
 }
 
-size_t gtest_addBulkStrRefToBuffer(client *c, const void *payload, size_t len) {
+size_t testOnlyAddBulkStrRefToBuffer(client *c, const void *payload, size_t len) {
     return _addBulkStrRefToBuffer(c, payload, len);
 }
 
-void gtest_addReplyPayloadToList(client *c, list *reply_list, const char *payload, size_t len, uint8_t payload_type) {
+void testOnlyAddReplyPayloadToList(client *c, list *reply_list, const char *payload, size_t len, uint8_t payload_type) {
     _addReplyPayloadToList(c, reply_list, payload, len, payload_type);
 }
 
-void gtest_addBulkStrRefToToList(client *c, const void *payload, size_t len) {
+void testOnlyAddBulkStrRefToToList(client *c, const void *payload, size_t len) {
     _addBulkStrRefToToList(c, payload, len);
 }
 
-void gtest_addBulkStrRefToBufferOrList(client *c, robj *obj) {
+void testOnlyAddBulkStrRefToBufferOrList(client *c, robj *obj) {
     _addBulkStrRefToBufferOrList(c, obj);
 }
 
-void gtest_initReplyIOV(client *c, int iovsize, struct iovec *iov_arr, char (*prefixes)[BULK_STR_LEN_PREFIX_MAX_SIZE], char *crlf, replyIOV *reply) {
+void testOnlyInitReplyIOV(client *c, int iovsize, struct iovec *iov_arr, char (*prefixes)[BULK_STR_LEN_PREFIX_MAX_SIZE], char *crlf, replyIOV *reply) {
     initReplyIOV(c, iovsize, iov_arr, prefixes, crlf, reply);
 }
 
-void gtest_addPlainBufferToReplyIOV(char *buf, size_t buf_len, replyIOV *reply, bufWriteMetadata *metadata) {
+void testOnlyAddPlainBufferToReplyIOV(char *buf, size_t buf_len, replyIOV *reply, bufWriteMetadata *metadata) {
     addPlainBufferToReplyIOV(buf, buf_len, reply, metadata);
 }
 
-void gtest_addBulkStringToReplyIOV(char *buf, size_t buf_len, replyIOV *reply, bufWriteMetadata *metadata) {
+void testOnlyAddBulkStringToReplyIOV(char *buf, size_t buf_len, replyIOV *reply, bufWriteMetadata *metadata) {
     addBulkStringToReplyIOV(buf, buf_len, reply, metadata);
 }
 
-void gtest_addEncodedBufferToReplyIOV(char *buf, size_t bufpos, replyIOV *reply, bufWriteMetadata *metadata) {
+void testOnlyAddEncodedBufferToReplyIOV(char *buf, size_t bufpos, replyIOV *reply, bufWriteMetadata *metadata) {
     addEncodedBufferToReplyIOV(buf, bufpos, reply, metadata);
 }
 
-void gtest_addBufferToReplyIOV(int encoded, char *buf, size_t bufpos, replyIOV *reply, bufWriteMetadata *metadata) {
+void testOnlyAddBufferToReplyIOV(int encoded, char *buf, size_t bufpos, replyIOV *reply, bufWriteMetadata *metadata) {
     addBufferToReplyIOV(encoded, buf, bufpos, reply, metadata);
 }
 
-void gtest_saveLastWrittenBuf(client *c, bufWriteMetadata *metadata, int bufcnt, size_t totlen, size_t totwritten) {
+void testOnlySaveLastWrittenBuf(client *c, bufWriteMetadata *metadata, int bufcnt, size_t totlen, size_t totwritten) {
     saveLastWrittenBuf(c, metadata, bufcnt, totlen, totwritten);
 }

@@ -6,6 +6,7 @@
 
 #include "generated_wrappers.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <sys/time.h>
 
@@ -29,66 +30,66 @@ void sdsfreeVoid(void *ptr);
 /* Macros from listpack.c needed for testing */
 #define LP_HDR_SIZE 6u /* 32 bit total len + 16 bit number of elements. */
 #define LP_EOF 0xFF
-#define LP_HDR_NUMELE_UNKNOWN static_cast<uint32_t>(UINT16_MAX)
-#define LP_HDR_NUMELE_UNKNOWN_UL static_cast<unsigned long>(UINT16_MAX)
+#define LP_HDR_NUMELE_UNKNOWN (uint32_t)(UINT16_MAX)
+#define LP_HDR_NUMELE_UNKNOWN_UL (unsigned long)(UINT16_MAX)
 #define LP_ENCODING_7BIT_UINT_MASK 0x80
-#define LP_ENCODING_IS_7BIT_UINT(byte) (((byte) & LP_ENCODING_7BIT_UINT_MASK) == 0)
+#define LP_ENCODING_IS_7BIT_UINT(byte) (((byte)&LP_ENCODING_7BIT_UINT_MASK) == 0)
 #define LP_ENCODING_6BIT_STR 0x80
 #define LP_ENCODING_6BIT_STR_MASK 0xC0
-#define LP_ENCODING_IS_6BIT_STR(byte) (((byte) & LP_ENCODING_6BIT_STR_MASK) == LP_ENCODING_6BIT_STR)
+#define LP_ENCODING_IS_6BIT_STR(byte) (((byte)&LP_ENCODING_6BIT_STR_MASK) == LP_ENCODING_6BIT_STR)
 #define LP_ENCODING_13BIT_INT 0xC0
 #define LP_ENCODING_13BIT_INT_MASK 0xE0
-#define LP_ENCODING_IS_13BIT_INT(byte) (((byte) & LP_ENCODING_13BIT_INT_MASK) == LP_ENCODING_13BIT_INT)
+#define LP_ENCODING_IS_13BIT_INT(byte) (((byte)&LP_ENCODING_13BIT_INT_MASK) == LP_ENCODING_13BIT_INT)
 #define LP_ENCODING_12BIT_STR 0xE0
 #define LP_ENCODING_12BIT_STR_MASK 0xF0
-#define LP_ENCODING_IS_12BIT_STR(byte) (((byte) & LP_ENCODING_12BIT_STR_MASK) == LP_ENCODING_12BIT_STR)
+#define LP_ENCODING_IS_12BIT_STR(byte) (((byte)&LP_ENCODING_12BIT_STR_MASK) == LP_ENCODING_12BIT_STR)
 #define LP_ENCODING_16BIT_INT 0xF1
 #define LP_ENCODING_16BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_16BIT_INT(byte) (((byte) & LP_ENCODING_16BIT_INT_MASK) == LP_ENCODING_16BIT_INT)
+#define LP_ENCODING_IS_16BIT_INT(byte) (((byte)&LP_ENCODING_16BIT_INT_MASK) == LP_ENCODING_16BIT_INT)
 #define LP_ENCODING_24BIT_INT 0xF2
 #define LP_ENCODING_24BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_24BIT_INT(byte) (((byte) & LP_ENCODING_24BIT_INT_MASK) == LP_ENCODING_24BIT_INT)
+#define LP_ENCODING_IS_24BIT_INT(byte) (((byte)&LP_ENCODING_24BIT_INT_MASK) == LP_ENCODING_24BIT_INT)
 #define LP_ENCODING_32BIT_INT 0xF3
 #define LP_ENCODING_32BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_32BIT_INT(byte) (((byte) & LP_ENCODING_32BIT_INT_MASK) == LP_ENCODING_32BIT_INT)
+#define LP_ENCODING_IS_32BIT_INT(byte) (((byte)&LP_ENCODING_32BIT_INT_MASK) == LP_ENCODING_32BIT_INT)
 #define LP_ENCODING_64BIT_INT 0xF4
 #define LP_ENCODING_64BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_64BIT_INT(byte) (((byte) & LP_ENCODING_64BIT_INT_MASK) == LP_ENCODING_64BIT_INT)
+#define LP_ENCODING_IS_64BIT_INT(byte) (((byte)&LP_ENCODING_64BIT_INT_MASK) == LP_ENCODING_64BIT_INT)
 #define LP_ENCODING_32BIT_STR 0xF0
 #define LP_ENCODING_32BIT_STR_MASK 0xFF
-#define LP_ENCODING_IS_32BIT_STR(byte) (((byte) & LP_ENCODING_32BIT_STR_MASK) == LP_ENCODING_32BIT_STR)
-#define lpGetNumElements(p) ((static_cast<uint32_t>((p)[4]) << 0) | (static_cast<uint32_t>((p)[5]) << 8))
+#define LP_ENCODING_IS_32BIT_STR(byte) (((byte)&LP_ENCODING_32BIT_STR_MASK) == LP_ENCODING_32BIT_STR)
+#define lpGetNumElements(p) (((uint32_t)((p)[4]) << 0) | ((uint32_t)((p)[5]) << 8))
 
-static char *mixlist[] = {const_cast<char *>("hello"), const_cast<char *>("foo"),
-                          const_cast<char *>("quux"), const_cast<char *>("1024")};
-static char *intlist[] = {const_cast<char *>("4294967296"), const_cast<char *>("-100"),
-                          const_cast<char *>("100"), const_cast<char *>("128000"),
-                          const_cast<char *>("non integer"), const_cast<char *>("much much longer non integer")};
+static char *mixlist[] = {(char *)("hello"), (char *)("foo"),
+                          (char *)("quux"), (char *)("1024")};
+static char *intlist[] = {(char *)("4294967296"), (char *)("-100"),
+                          (char *)("100"), (char *)("128000"),
+                          (char *)("non integer"), (char *)("much much longer non integer")};
 
 static unsigned char *createList(void) {
     unsigned char *lp = lpNew(0);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(mixlist[1]), strlen(mixlist[1]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(mixlist[2]), strlen(mixlist[2]));
-    lp = lpPrepend(lp, reinterpret_cast<unsigned char *>(mixlist[0]), strlen(mixlist[0]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(mixlist[3]), strlen(mixlist[3]));
+    lp = lpAppend(lp, (unsigned char *)(mixlist[1]), strlen(mixlist[1]));
+    lp = lpAppend(lp, (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
+    lp = lpPrepend(lp, (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
+    lp = lpAppend(lp, (unsigned char *)(mixlist[3]), strlen(mixlist[3]));
     return lp;
 }
 
 static unsigned char *createIntList(void) {
     unsigned char *lp = lpNew(0);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(intlist[2]), strlen(intlist[2]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(intlist[3]), strlen(intlist[3]));
-    lp = lpPrepend(lp, reinterpret_cast<unsigned char *>(intlist[1]), strlen(intlist[1]));
-    lp = lpPrepend(lp, reinterpret_cast<unsigned char *>(intlist[0]), strlen(intlist[0]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(intlist[4]), strlen(intlist[4]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(intlist[5]), strlen(intlist[5]));
+    lp = lpAppend(lp, (unsigned char *)(intlist[2]), strlen(intlist[2]));
+    lp = lpAppend(lp, (unsigned char *)(intlist[3]), strlen(intlist[3]));
+    lp = lpPrepend(lp, (unsigned char *)(intlist[1]), strlen(intlist[1]));
+    lp = lpPrepend(lp, (unsigned char *)(intlist[0]), strlen(intlist[0]));
+    lp = lpAppend(lp, (unsigned char *)(intlist[4]), strlen(intlist[4]));
+    lp = lpAppend(lp, (unsigned char *)(intlist[5]), strlen(intlist[5]));
     return lp;
 }
 
 static long long usec(void) {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
-    return (static_cast<long long>(tv.tv_sec) * 1000000) + tv.tv_usec;
+    return ((long long)(tv.tv_sec) * 1000000) + tv.tv_usec;
 }
 
 static void stress(int pos, int num, int maxsize, int dnum) {
@@ -99,16 +100,16 @@ static void stress(int pos, int num, int maxsize, int dnum) {
     for (i = 0; i < maxsize; i += dnum) {
         lp = lpNew(0);
         for (j = 0; j < i; j++) {
-            lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("quux")), 4);
+            lp = lpAppend(lp, (unsigned char *)("quux"), 4);
         }
 
         /* Do num times a push+pop from pos */
         start = usec();
         for (k = 0; k < num; k++) {
             if (pos == 0) {
-                lp = lpPrepend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("quux")), 4);
+                lp = lpPrepend(lp, (unsigned char *)("quux"), 4);
             } else {
-                lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("quux")), 4);
+                lp = lpAppend(lp, (unsigned char *)("quux"), 4);
             }
             lp = lpDelete(lp, lpFirst(lp), nullptr);
         }
@@ -126,11 +127,11 @@ static unsigned char *pop(unsigned char *lp, int where, void *expected) {
     vstr = lpGet(p, &vlen, nullptr);
 
     if (vstr) {
-        size_t expected_len = strlen(static_cast<const char *>(expected));
-        EXPECT_EQ(vlen, static_cast<int64_t>(expected_len));
-        EXPECT_EQ(memcmp(vstr, expected, expected_len), 0);
+        size_t expected_len = strlen((const char *)(expected));
+        assert(vlen == (int64_t)(expected_len));
+        assert(memcmp(vstr, expected, expected_len) == 0);
     } else {
-        EXPECT_EQ(vlen, *static_cast<int64_t *>(expected));
+        assert(vlen == *(int64_t *)(expected));
     }
 
     return lpDelete(lp, p, &p);
@@ -163,7 +164,7 @@ static int randstring(char *target, unsigned int min, unsigned int max) {
 }
 
 static int verifyEntry(unsigned char *p, unsigned char *s, size_t slen) {
-    EXPECT_TRUE(lpCompare(p, s, slen));
+    assert(lpCompare(p, s, slen));
     return 0;
 }
 
@@ -172,8 +173,8 @@ static int lpValidation(unsigned char *p, unsigned int head_count, void *userdat
     UNUSED(head_count);
 
     int ret;
-    long *count = static_cast<long *>(userdata);
-    ret = lpCompare(p, reinterpret_cast<unsigned char *>(mixlist[*count]), strlen(mixlist[*count]));
+    long *count = (long *)(userdata);
+    ret = lpCompare(p, (unsigned char *)(mixlist[*count]), strlen(mixlist[*count]));
     (*count)++;
     return ret;
 }
@@ -191,7 +192,7 @@ TEST_F(ListpackTest, listpackCreateIntList) {
     unsigned char *lp;
 
     lp = createIntList();
-    EXPECT_EQ(lpLength(lp), 6u);
+    ASSERT_EQ(lpLength(lp), 6u);
     lpFree(lp);
 }
 
@@ -200,7 +201,7 @@ TEST_F(ListpackTest, listpackCreateList) {
     unsigned char *lp;
 
     lp = createList();
-    EXPECT_EQ(lpLength(lp), 4u);
+    ASSERT_EQ(lpLength(lp), 4u);
     lpFree(lp);
 }
 
@@ -209,10 +210,10 @@ TEST_F(ListpackTest, listpackLpPrepend) {
     unsigned char *lp;
 
     lp = lpNew(0);
-    lp = lpPrepend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpPrepend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
-    verifyEntry(lpSeek(lp, 0), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
-    verifyEntry(lpSeek(lp, 1), reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
+    lp = lpPrepend(lp, (unsigned char *)("abc"), 3);
+    lp = lpPrepend(lp, (unsigned char *)("1024"), 4);
+    verifyEntry(lpSeek(lp, 0), (unsigned char *)("1024"), 4);
+    verifyEntry(lpSeek(lp, 1), (unsigned char *)("abc"), 3);
     lpFree(lp);
 }
 
@@ -227,8 +228,8 @@ TEST_F(ListpackTest, listpackLpPrependInteger) {
     lp = lpPrependInteger(lp, 8388607);
     lp = lpPrependInteger(lp, 2147483647);
     lp = lpPrependInteger(lp, 9223372036854775807LL);
-    verifyEntry(lpSeek(lp, 0), reinterpret_cast<unsigned char *>(const_cast<char *>("9223372036854775807")), 19);
-    verifyEntry(lpSeek(lp, -1), reinterpret_cast<unsigned char *>(const_cast<char *>("127")), 3);
+    verifyEntry(lpSeek(lp, 0), (unsigned char *)("9223372036854775807"), 19);
+    verifyEntry(lpSeek(lp, -1), (unsigned char *)("127"), 3);
     lpFree(lp);
 }
 
@@ -237,12 +238,12 @@ TEST_F(ListpackTest, listpackGetELementAtIndex) {
     unsigned char *lp;
 
     lp = createList();
-    verifyEntry(lpSeek(lp, 0), reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5);
-    verifyEntry(lpSeek(lp, 3), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
-    verifyEntry(lpSeek(lp, -1), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
-    verifyEntry(lpSeek(lp, -4), reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5);
-    EXPECT_EQ(lpSeek(lp, 4), nullptr);
-    EXPECT_EQ(lpSeek(lp, -5), nullptr);
+    verifyEntry(lpSeek(lp, 0), (unsigned char *)("hello"), 5);
+    verifyEntry(lpSeek(lp, 3), (unsigned char *)("1024"), 4);
+    verifyEntry(lpSeek(lp, -1), (unsigned char *)("1024"), 4);
+    verifyEntry(lpSeek(lp, -4), (unsigned char *)("hello"), 5);
+    ASSERT_EQ(lpSeek(lp, 4), nullptr);
+    ASSERT_EQ(lpSeek(lp, -5), nullptr);
     lpFree(lp);
 }
 
@@ -254,9 +255,9 @@ TEST_F(ListpackTest, listpackPop) {
     lp = createList();
     expected = 1024;
     lp = pop(lp, 1, &expected);
-    lp = pop(lp, 0, const_cast<char *>("hello"));
-    lp = pop(lp, 1, const_cast<char *>("quux"));
-    lp = pop(lp, 1, const_cast<char *>("foo"));
+    lp = pop(lp, 0, (char *)("hello"));
+    lp = pop(lp, 1, (char *)("quux"));
+    lp = pop(lp, 1, (char *)("foo"));
     lpFree(lp);
 }
 
@@ -265,12 +266,12 @@ TEST_F(ListpackTest, listpackGetELementAtIndex2) {
     unsigned char *lp;
 
     lp = createList();
-    verifyEntry(lpSeek(lp, 0), reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5);
-    verifyEntry(lpSeek(lp, 3), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
-    verifyEntry(lpSeek(lp, -1), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
-    verifyEntry(lpSeek(lp, -4), reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5);
-    EXPECT_EQ(lpSeek(lp, 4), nullptr);
-    EXPECT_EQ(lpSeek(lp, -5), nullptr);
+    verifyEntry(lpSeek(lp, 0), (unsigned char *)("hello"), 5);
+    verifyEntry(lpSeek(lp, 3), (unsigned char *)("1024"), 4);
+    verifyEntry(lpSeek(lp, -1), (unsigned char *)("1024"), 4);
+    verifyEntry(lpSeek(lp, -4), (unsigned char *)("hello"), 5);
+    ASSERT_EQ(lpSeek(lp, 4), nullptr);
+    ASSERT_EQ(lpSeek(lp, -5), nullptr);
     lpFree(lp);
 }
 
@@ -283,7 +284,7 @@ TEST_F(ListpackTest, listpackIterate0toEnd) {
     p = lpFirst(lp);
     i = 0;
     while (p) {
-        verifyEntry(p, reinterpret_cast<unsigned char *>(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
         p = lpNext(lp, p);
         i++;
     }
@@ -299,7 +300,7 @@ TEST_F(ListpackTest, listpackIterate1toEnd) {
     i = 1;
     p = lpSeek(lp, i);
     while (p) {
-        verifyEntry(p, reinterpret_cast<unsigned char *>(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
         p = lpNext(lp, p);
         i++;
     }
@@ -315,7 +316,7 @@ TEST_F(ListpackTest, listpackIterate2toEnd) {
     i = 2;
     p = lpSeek(lp, i);
     while (p) {
-        verifyEntry(p, reinterpret_cast<unsigned char *>(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
         p = lpNext(lp, p);
         i++;
     }
@@ -331,7 +332,7 @@ TEST_F(ListpackTest, listpackIterateBackToFront) {
     p = lpLast(lp);
     i = 3;
     while (p) {
-        verifyEntry(p, reinterpret_cast<unsigned char *>(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
         p = lpPrev(lp, p);
         i--;
     }
@@ -347,9 +348,9 @@ TEST_F(ListpackTest, listpackIterateBackToFrontWithDelete) {
     p = lpLast(lp);
     i = 3;
     while ((p = lpLast(lp))) {
-        verifyEntry(p, reinterpret_cast<unsigned char *>(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
         lp = lpDelete(lp, p, &p);
-        EXPECT_EQ(p, nullptr);
+        ASSERT_EQ(p, nullptr);
         i--;
     }
     lpFree(lp);
@@ -361,17 +362,17 @@ TEST_F(ListpackTest, listpackDeleteWhenNumIsMinusOne) {
 
     lp = createList();
     lp = lpDeleteRange(lp, 0, -1);
-    EXPECT_EQ(lpLength(lp), 0u);
-    EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
+    ASSERT_EQ(lpLength(lp), 0u);
+    ASSERT_EQ(lp[LP_HDR_SIZE], LP_EOF);
+    ASSERT_EQ(lpBytes(lp), (size_t)(LP_HDR_SIZE + 1));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpFirst(lp);
     lp = lpDeleteRangeWithEntry(lp, &ptr, -1);
-    EXPECT_EQ(lpLength(lp), 0u);
-    EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
+    ASSERT_EQ(lpLength(lp), 0u);
+    ASSERT_EQ(lp[LP_HDR_SIZE], LP_EOF);
+    ASSERT_EQ(lpBytes(lp), (size_t)(LP_HDR_SIZE + 1));
     zfree(lp);
 }
 
@@ -381,17 +382,17 @@ TEST_F(ListpackTest, listpackDeleteWithNegativeIndex) {
 
     lp = createList();
     lp = lpDeleteRange(lp, -4, 4);
-    EXPECT_EQ(lpLength(lp), 0u);
-    EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
+    ASSERT_EQ(lpLength(lp), 0u);
+    ASSERT_EQ(lp[LP_HDR_SIZE], LP_EOF);
+    ASSERT_EQ(lpBytes(lp), (size_t)(LP_HDR_SIZE + 1));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpSeek(lp, -4);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 4);
-    EXPECT_EQ(lpLength(lp), 0u);
-    EXPECT_EQ(lp[LP_HDR_SIZE], LP_EOF);
-    EXPECT_EQ(lpBytes(lp), static_cast<size_t>(LP_HDR_SIZE + 1));
+    ASSERT_EQ(lpLength(lp), 0u);
+    ASSERT_EQ(lp[LP_HDR_SIZE], LP_EOF);
+    ASSERT_EQ(lpBytes(lp), (size_t)(LP_HDR_SIZE + 1));
     zfree(lp);
 }
 
@@ -401,15 +402,15 @@ TEST_F(ListpackTest, listpackDeleteInclusiveRange0_0) {
 
     lp = createList();
     lp = lpDeleteRange(lp, 0, 1);
-    EXPECT_EQ(lpLength(lp), 3u);
-    EXPECT_EQ(lpSkip(lpLast(lp))[0], LP_EOF); /* check set LP_EOF correctly */
+    ASSERT_EQ(lpLength(lp), 3u);
+    ASSERT_EQ(lpSkip(lpLast(lp))[0], LP_EOF); /* check set LP_EOF correctly */
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpFirst(lp);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 1);
-    EXPECT_EQ(lpLength(lp), 3u);
-    EXPECT_EQ(lpSkip(lpLast(lp))[0], LP_EOF); /* check set LP_EOF correctly */
+    ASSERT_EQ(lpLength(lp), 3u);
+    ASSERT_EQ(lpSkip(lpLast(lp))[0], LP_EOF); /* check set LP_EOF correctly */
     zfree(lp);
 }
 
@@ -419,15 +420,15 @@ TEST_F(ListpackTest, listpackDeleteInclusiveRange0_1) {
 
     lp = createList();
     lp = lpDeleteRange(lp, 0, 2);
-    EXPECT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>(mixlist[2])), strlen(mixlist[2]));
+    ASSERT_EQ(lpLength(lp), 2u);
+    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpFirst(lp);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 2);
-    EXPECT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>(mixlist[2])), strlen(mixlist[2]));
+    ASSERT_EQ(lpLength(lp), 2u);
+    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
     zfree(lp);
 }
 
@@ -437,15 +438,15 @@ TEST_F(ListpackTest, listpackDeleteInclusiveRange1_2) {
 
     lp = createList();
     lp = lpDeleteRange(lp, 1, 2);
-    EXPECT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>(mixlist[0])), strlen(mixlist[0]));
+    ASSERT_EQ(lpLength(lp), 2u);
+    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpSeek(lp, 1);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 2);
-    EXPECT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>(mixlist[0])), strlen(mixlist[0]));
+    ASSERT_EQ(lpLength(lp), 2u);
+    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
     zfree(lp);
 }
 
@@ -455,7 +456,7 @@ TEST_F(ListpackTest, listpackDeleteWitStartIndexOutOfRange) {
 
     lp = createList();
     lp = lpDeleteRange(lp, 5, 1);
-    EXPECT_EQ(lpLength(lp), 4u);
+    ASSERT_EQ(lpLength(lp), 4u);
     zfree(lp);
 }
 
@@ -465,28 +466,28 @@ TEST_F(ListpackTest, listpackDeleteWitNumOverflow) {
 
     lp = createList();
     lp = lpDeleteRange(lp, 1, 5);
-    EXPECT_EQ(lpLength(lp), 1u);
-    verifyEntry(lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>(mixlist[0])), strlen(mixlist[0]));
+    ASSERT_EQ(lpLength(lp), 1u);
+    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpSeek(lp, 1);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 5);
-    EXPECT_EQ(lpLength(lp), 1u);
-    verifyEntry(lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>(mixlist[0])), strlen(mixlist[0]));
+    ASSERT_EQ(lpLength(lp), 1u);
+    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
     zfree(lp);
 }
 
 TEST_F(ListpackTest, listpackBatchDelete) {
     /* Batch delete */
     unsigned char *lp = createList(); /* char *mixlist[] = {"hello", "foo", "quux", "1024"} */
-    EXPECT_EQ(lpLength(lp), 4u);      /* Pre-condition */
+    ASSERT_EQ(lpLength(lp), 4u);      /* Pre-condition */
     unsigned char *p0 = lpFirst(lp), *p1 = lpNext(lp, p0), *p2 = lpNext(lp, p1), *p3 = lpNext(lp, p2);
     unsigned char *ps[] = {p0, p1, p3};
     lp = lpBatchDelete(lp, ps, 3);
-    EXPECT_EQ(lpLength(lp), 1u);
-    verifyEntry(lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>(mixlist[2])), strlen(mixlist[2]));
-    EXPECT_EQ(lpValidateIntegrity(lp, lpBytes(lp), 1, nullptr, nullptr), 1);
+    ASSERT_EQ(lpLength(lp), 1u);
+    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
+    ASSERT_EQ(lpValidateIntegrity(lp, lpBytes(lp), 1, nullptr, nullptr), 1);
     lpFree(lp);
 }
 
@@ -497,7 +498,7 @@ TEST_F(ListpackTest, listpackDeleteFooWhileIterating) {
     lp = createList();
     p = lpFirst(lp);
     while (p) {
-        if (lpCompare(p, reinterpret_cast<unsigned char *>(const_cast<char *>("foo")), 3)) {
+        if (lpCompare(p, (unsigned char *)("foo"), 3)) {
             lp = lpDelete(lp, p, &p);
         } else {
             p = lpNext(lp, p);
@@ -512,13 +513,13 @@ TEST_F(ListpackTest, listpackReplaceWithSameSize) {
 
     orig_lp = lp = createList(); /* "hello", "foo", "quux", "1024" */
     p = lpSeek(lp, 0);
-    lp = lpReplace(lp, &p, reinterpret_cast<unsigned char *>(const_cast<char *>("zoink")), 5);
+    lp = lpReplace(lp, &p, (unsigned char *)("zoink"), 5);
     p = lpSeek(lp, 3);
-    lp = lpReplace(lp, &p, reinterpret_cast<unsigned char *>(const_cast<char *>("y")), 1);
+    lp = lpReplace(lp, &p, (unsigned char *)("y"), 1);
     p = lpSeek(lp, 1);
-    lp = lpReplace(lp, &p, reinterpret_cast<unsigned char *>(const_cast<char *>("65536")), 5);
+    lp = lpReplace(lp, &p, (unsigned char *)("65536"), 5);
     p = lpSeek(lp, 0);
-    EXPECT_EQ(memcmp(reinterpret_cast<char *>(p),
+    ASSERT_EQ(memcmp((char *)(p),
                      "\x85zoink\x06"
                      "\xf2\x00\x00\x01\x04" /* 65536 as int24 */
                      "\x84quux\05"
@@ -526,7 +527,7 @@ TEST_F(ListpackTest, listpackReplaceWithSameSize) {
                      "\xff",
                      22),
               0);
-    EXPECT_EQ(lp, orig_lp); /* no reallocations have happened */
+    ASSERT_EQ(lp, orig_lp); /* no reallocations have happened */
     lpFree(lp);
 }
 
@@ -536,9 +537,9 @@ TEST_F(ListpackTest, listpackReplaceWithDifferentSize) {
 
     lp = createList(); /* "hello", "foo", "quux", "1024" */
     p = lpSeek(lp, 1);
-    lp = lpReplace(lp, &p, reinterpret_cast<unsigned char *>(const_cast<char *>("squirrel")), 8);
+    lp = lpReplace(lp, &p, (unsigned char *)("squirrel"), 8);
     p = lpSeek(lp, 0);
-    EXPECT_EQ(strncmp(reinterpret_cast<char *>(p),
+    ASSERT_EQ(strncmp((char *)(p),
                       "\x85hello\x06"
                       "\x88squirrel\x09"
                       "\x84quux\x05"
@@ -558,16 +559,16 @@ TEST_F(ListpackTest, listpackRegressionGt255Bytes) {
     memset(v1, 'x', 256);
     memset(v2, 'y', 256);
     lp = lpNew(0);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(v1), strlen(v1));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(v2), strlen(v2));
+    lp = lpAppend(lp, (unsigned char *)(v1), strlen(v1));
+    lp = lpAppend(lp, (unsigned char *)(v2), strlen(v2));
 
     /* Pop values again and compare their value. */
     p = lpFirst(lp);
     vstr = lpGet(p, &vlen, nullptr);
-    EXPECT_EQ(strncmp(v1, reinterpret_cast<char *>(vstr), vlen), 0);
+    ASSERT_EQ(strncmp(v1, (char *)(vstr), vlen), 0);
     p = lpSeek(lp, 1);
     vstr = lpGet(p, &vlen, nullptr);
-    EXPECT_EQ(strncmp(v2, reinterpret_cast<char *>(vstr), vlen), 0);
+    ASSERT_EQ(strncmp(v2, (char *)(vstr), vlen), 0);
     lpFree(lp);
 }
 
@@ -581,16 +582,16 @@ TEST_F(ListpackTest, listpackCreateLongListAndCheckIndices) {
     int i, len;
     for (i = 0; i < 1000; i++) {
         len = snprintf(buf, sizeof(buf), "%d", i);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(buf), len);
+        lp = lpAppend(lp, (unsigned char *)(buf), len);
     }
     for (i = 0; i < 1000; i++) {
         p = lpSeek(lp, i);
         lpGet(p, &vlen, nullptr);
-        EXPECT_EQ(i, vlen);
+        ASSERT_EQ(i, vlen);
 
         p = lpSeek(lp, -i - 1);
         lpGet(p, &vlen, nullptr);
-        EXPECT_EQ(999 - i, vlen);
+        ASSERT_EQ(999 - i, vlen);
     }
     lpFree(lp);
 }
@@ -601,11 +602,11 @@ TEST_F(ListpackTest, listpackCompareStrsWithLpEntries) {
 
     lp = createList();
     p = lpSeek(lp, 0);
-    EXPECT_TRUE(lpCompare(p, reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5));
-    EXPECT_FALSE(lpCompare(p, reinterpret_cast<unsigned char *>(const_cast<char *>("hella")), 5));
+    ASSERT_TRUE(lpCompare(p, (unsigned char *)("hello"), 5));
+    ASSERT_FALSE(lpCompare(p, (unsigned char *)("hella"), 5));
 
     p = lpSeek(lp, 3);
-    EXPECT_TRUE(lpCompare(p, reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4));
+    ASSERT_TRUE(lpCompare(p, (unsigned char *)("1024"), 4));
     lpFree(lp);
 }
 
@@ -616,7 +617,7 @@ TEST_F(ListpackTest, listpackLpMergeEmptyLps) {
 
     /* Merge two empty listpacks, get empty result back. */
     lp1 = lpMerge(&lp1, &lp2);
-    EXPECT_EQ(lpLength(lp1), 0u);
+    ASSERT_EQ(lpLength(lp1), 0u);
     zfree(lp1);
 }
 
@@ -631,14 +632,14 @@ TEST_F(ListpackTest, listpackLpMergeLp1Larger) {
     unsigned long lp2_len = lpLength(lp2);
 
     unsigned char *lp3 = lpMerge(&lp1, &lp2);
-    EXPECT_EQ(lp3, lp1);
-    EXPECT_EQ(lp2, nullptr);
-    EXPECT_EQ(lpLength(lp3), lp1_len + lp2_len);
-    EXPECT_EQ(lpBytes(lp3), lp1_bytes + lp2_bytes - LP_HDR_SIZE - 1);
-    verifyEntry(lpSeek(lp3, 0), reinterpret_cast<unsigned char *>(const_cast<char *>("4294967296")), 10);
-    verifyEntry(lpSeek(lp3, 5), reinterpret_cast<unsigned char *>(const_cast<char *>("much much longer non integer")), 28);
-    verifyEntry(lpSeek(lp3, 6), reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5);
-    verifyEntry(lpSeek(lp3, -1), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
+    ASSERT_EQ(lp3, lp1);
+    ASSERT_EQ(lp2, nullptr);
+    ASSERT_EQ(lpLength(lp3), lp1_len + lp2_len);
+    ASSERT_EQ(lpBytes(lp3), lp1_bytes + lp2_bytes - LP_HDR_SIZE - 1);
+    verifyEntry(lpSeek(lp3, 0), (unsigned char *)("4294967296"), 10);
+    verifyEntry(lpSeek(lp3, 5), (unsigned char *)("much much longer non integer"), 28);
+    verifyEntry(lpSeek(lp3, 6), (unsigned char *)("hello"), 5);
+    verifyEntry(lpSeek(lp3, -1), (unsigned char *)("1024"), 4);
     zfree(lp3);
 }
 
@@ -653,14 +654,14 @@ TEST_F(ListpackTest, listpackLpMergeLp2Larger) {
     unsigned long lp2_len = lpLength(lp2);
 
     unsigned char *lp3 = lpMerge(&lp1, &lp2);
-    EXPECT_EQ(lp3, lp2);
-    EXPECT_EQ(lp1, nullptr);
-    EXPECT_EQ(lpLength(lp3), lp1_len + lp2_len);
-    EXPECT_EQ(lpBytes(lp3), lp1_bytes + lp2_bytes - LP_HDR_SIZE - 1);
-    verifyEntry(lpSeek(lp3, 0), reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5);
-    verifyEntry(lpSeek(lp3, 3), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
-    verifyEntry(lpSeek(lp3, 4), reinterpret_cast<unsigned char *>(const_cast<char *>("4294967296")), 10);
-    verifyEntry(lpSeek(lp3, -1), reinterpret_cast<unsigned char *>(const_cast<char *>("much much longer non integer")), 28);
+    ASSERT_EQ(lp3, lp2);
+    ASSERT_EQ(lp1, nullptr);
+    ASSERT_EQ(lpLength(lp3), lp1_len + lp2_len);
+    ASSERT_EQ(lpBytes(lp3), lp1_bytes + lp2_bytes - LP_HDR_SIZE - 1);
+    verifyEntry(lpSeek(lp3, 0), (unsigned char *)("hello"), 5);
+    verifyEntry(lpSeek(lp3, 3), (unsigned char *)("1024"), 4);
+    verifyEntry(lpSeek(lp3, 4), (unsigned char *)("4294967296"), 10);
+    verifyEntry(lpSeek(lp3, -1), (unsigned char *)("much much longer non integer"), 28);
     zfree(lp3);
 }
 
@@ -673,7 +674,7 @@ TEST_F(ListpackTest, listpackLpNextRandom) {
     for (size_t i = 0; i < size; i++) {
         lp = lpAppend(lp, buf, i);
     }
-    EXPECT_EQ(lpLength(lp), size);
+    ASSERT_EQ(lpLength(lp), size);
 
     /* Pick a subset of the elements of every possible subset size */
     for (unsigned int count = 0; count <= size; count++) {
@@ -682,10 +683,10 @@ TEST_F(ListpackTest, listpackLpNextRandom) {
         unsigned char *prev = nullptr;
         unsigned index = 0;
         while (remaining > 0) {
-            EXPECT_NE(p, nullptr);
+            ASSERT_NE(p, nullptr);
             p = lpNextRandom(lp, p, &index, remaining--, 0);
-            EXPECT_NE(p, nullptr);
-            EXPECT_NE(p, prev);
+            ASSERT_NE(p, nullptr);
+            ASSERT_NE(p, prev);
             prev = p;
             p = lpNext(lp, p);
             index++;
@@ -700,39 +701,39 @@ TEST_F(ListpackTest, listpackLpNextRandomCC) {
     unsigned i = 0;
 
     /* Pick from empty listpack returns NULL. */
-    EXPECT_EQ(lpNextRandom(lp, nullptr, &i, 2, 0), nullptr);
+    ASSERT_EQ(lpNextRandom(lp, nullptr, &i, 2, 0), nullptr);
 
     /* Add some elements and find their pointers within the listpack. */
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("def")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("ghi")), 3);
-    EXPECT_EQ(lpLength(lp), 3u);
+    lp = lpAppend(lp, (unsigned char *)("abc"), 3);
+    lp = lpAppend(lp, (unsigned char *)("def"), 3);
+    lp = lpAppend(lp, (unsigned char *)("ghi"), 3);
+    ASSERT_EQ(lpLength(lp), 3u);
     unsigned char *p0 = lpFirst(lp);
     unsigned char *p1 = lpNext(lp, p0);
     unsigned char *p2 = lpNext(lp, p1);
-    EXPECT_EQ(lpNext(lp, p2), nullptr);
+    ASSERT_EQ(lpNext(lp, p2), nullptr);
 
     /* Pick zero elements returns NULL. */
     i = 0;
-    EXPECT_EQ(lpNextRandom(lp, lpFirst(lp), &i, 0, 0), nullptr);
+    ASSERT_EQ(lpNextRandom(lp, lpFirst(lp), &i, 0, 0), nullptr);
 
     /* Pick all returns all. */
     i = 0;
-    EXPECT_TRUE(lpNextRandom(lp, p0, &i, 3, 0) == p0 && i == 0);
+    ASSERT_TRUE(lpNextRandom(lp, p0, &i, 3, 0) == p0 && i == 0);
     i = 1;
-    EXPECT_TRUE(lpNextRandom(lp, p1, &i, 2, 0) == p1 && i == 1);
+    ASSERT_TRUE(lpNextRandom(lp, p1, &i, 2, 0) == p1 && i == 1);
     i = 2;
-    EXPECT_TRUE(lpNextRandom(lp, p2, &i, 1, 0) == p2 && i == 2);
+    ASSERT_TRUE(lpNextRandom(lp, p2, &i, 1, 0) == p2 && i == 2);
 
     /* Pick more than one when there's only one left returns the last one. */
     i = 2;
-    EXPECT_TRUE(lpNextRandom(lp, p2, &i, 42, 0) == p2 && i == 2);
+    ASSERT_TRUE(lpNextRandom(lp, p2, &i, 42, 0) == p2 && i == 2);
 
     /* Pick all even elements returns p0 and p2. */
     i = 0;
-    EXPECT_TRUE(lpNextRandom(lp, p0, &i, 10, 1) == p0 && i == 0);
+    ASSERT_TRUE(lpNextRandom(lp, p0, &i, 10, 1) == p0 && i == 0);
     i = 1;
-    EXPECT_TRUE(lpNextRandom(lp, p1, &i, 10, 1) == p2 && i == 2);
+    ASSERT_TRUE(lpNextRandom(lp, p1, &i, 10, 1) == p2 && i == 2);
 
     /* Don't crash even for bad index. */
     for (int j = 0; j < 100; j++) {
@@ -746,7 +747,7 @@ TEST_F(ListpackTest, listpackLpNextRandomCC) {
         i = j % 7;
         unsigned int remaining = j % 5;
         p = lpNextRandom(lp, p, &i, remaining, 0);
-        EXPECT_TRUE(p == p0 || p == p1 || p == p2 || p == nullptr);
+        ASSERT_TRUE(p == p0 || p == p1 || p == p2 || p == nullptr);
     }
     lpFree(lp);
 }
@@ -755,11 +756,11 @@ TEST_F(ListpackTest, listpackRandomPairWithOneElement) {
     /* Random pair with one element */
     listpackEntry key, val;
     unsigned char *lp = lpNew(0);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("123")), 3);
+    lp = lpAppend(lp, (unsigned char *)("abc"), 3);
+    lp = lpAppend(lp, (unsigned char *)("123"), 3);
     lpRandomPair(lp, 1, &key, &val);
-    EXPECT_EQ(memcmp(key.sval, "abc", key.slen), 0);
-    EXPECT_EQ(val.lval, 123);
+    ASSERT_EQ(memcmp(key.sval, "abc", key.slen), 0);
+    ASSERT_EQ(val.lval, 123);
     lpFree(lp);
 }
 
@@ -767,19 +768,19 @@ TEST_F(ListpackTest, listpackRandomPairWithManyElements) {
     /* Random pair with many elements */
     listpackEntry key, val;
     unsigned char *lp = lpNew(0);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("123")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("456")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("def")), 3);
+    lp = lpAppend(lp, (unsigned char *)("abc"), 3);
+    lp = lpAppend(lp, (unsigned char *)("123"), 3);
+    lp = lpAppend(lp, (unsigned char *)("456"), 3);
+    lp = lpAppend(lp, (unsigned char *)("def"), 3);
     lpRandomPair(lp, 2, &key, &val);
     if (key.sval) {
-        EXPECT_EQ(memcmp(key.sval, "abc", key.slen), 0);
-        EXPECT_EQ(key.slen, 3u);
-        EXPECT_EQ(val.lval, 123);
+        ASSERT_EQ(memcmp(key.sval, "abc", key.slen), 0);
+        ASSERT_EQ(key.slen, 3u);
+        ASSERT_EQ(val.lval, 123);
     }
     if (!key.sval) {
-        EXPECT_EQ(key.lval, 456);
-        EXPECT_EQ(memcmp(val.sval, "def", val.slen), 0);
+        ASSERT_EQ(key.lval, 456);
+        ASSERT_EQ(memcmp(val.sval, "def", val.slen), 0);
     }
     lpFree(lp);
 }
@@ -788,14 +789,14 @@ TEST_F(ListpackTest, listpackRandomPairsWithOneElement) {
     /* Random pairs with one element */
     int count = 5;
     unsigned char *lp = lpNew(0);
-    listpackEntry *keys = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
-    listpackEntry *vals = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *keys = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *vals = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
 
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("123")), 3);
+    lp = lpAppend(lp, (unsigned char *)("abc"), 3);
+    lp = lpAppend(lp, (unsigned char *)("123"), 3);
     lpRandomPairs(lp, count, keys, vals);
-    EXPECT_EQ(memcmp(keys[4].sval, "abc", keys[4].slen), 0);
-    EXPECT_EQ(vals[4].lval, 123);
+    ASSERT_EQ(memcmp(keys[4].sval, "abc", keys[4].slen), 0);
+    ASSERT_EQ(vals[4].lval, 123);
     zfree(keys);
     zfree(vals);
     lpFree(lp);
@@ -805,23 +806,23 @@ TEST_F(ListpackTest, listpackRandomPairsWithManyElements) {
     /* Random pairs with many elements */
     int count = 5;
     unsigned char *lp = lpNew(0);
-    listpackEntry *keys = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
-    listpackEntry *vals = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *keys = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *vals = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
 
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("123")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("456")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("def")), 3);
+    lp = lpAppend(lp, (unsigned char *)("abc"), 3);
+    lp = lpAppend(lp, (unsigned char *)("123"), 3);
+    lp = lpAppend(lp, (unsigned char *)("456"), 3);
+    lp = lpAppend(lp, (unsigned char *)("def"), 3);
     lpRandomPairs(lp, count, keys, vals);
     for (int i = 0; i < count; i++) {
         if (keys[i].sval) {
-            EXPECT_EQ(memcmp(keys[i].sval, "abc", keys[i].slen), 0);
-            EXPECT_EQ(keys[i].slen, 3u);
-            EXPECT_EQ(vals[i].lval, 123);
+            ASSERT_EQ(memcmp(keys[i].sval, "abc", keys[i].slen), 0);
+            ASSERT_EQ(keys[i].slen, 3u);
+            ASSERT_EQ(vals[i].lval, 123);
         }
         if (!keys[i].sval) {
-            EXPECT_EQ(keys[i].lval, 456);
-            EXPECT_EQ(memcmp(vals[i].sval, "def", vals[i].slen), 0);
+            ASSERT_EQ(keys[i].lval, 456);
+            ASSERT_EQ(memcmp(vals[i].sval, "def", vals[i].slen), 0);
         }
     }
     zfree(keys);
@@ -834,15 +835,15 @@ TEST_F(ListpackTest, listpackRandomPairsUniqueWithOneElement) {
     unsigned picked;
     int count = 5;
     unsigned char *lp = lpNew(0);
-    listpackEntry *keys = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
-    listpackEntry *vals = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *keys = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *vals = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
 
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("123")), 3);
+    lp = lpAppend(lp, (unsigned char *)("abc"), 3);
+    lp = lpAppend(lp, (unsigned char *)("123"), 3);
     picked = lpRandomPairsUnique(lp, count, keys, vals);
-    EXPECT_EQ(picked, 1u);
-    EXPECT_EQ(memcmp(keys[0].sval, "abc", keys[0].slen), 0);
-    EXPECT_EQ(vals[0].lval, 123);
+    ASSERT_EQ(picked, 1u);
+    ASSERT_EQ(memcmp(keys[0].sval, "abc", keys[0].slen), 0);
+    ASSERT_EQ(vals[0].lval, 123);
     zfree(keys);
     zfree(vals);
     lpFree(lp);
@@ -853,24 +854,24 @@ TEST_F(ListpackTest, listpackRandomPairsUniqueWithManyElements) {
     unsigned picked;
     int count = 5;
     unsigned char *lp = lpNew(0);
-    listpackEntry *keys = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
-    listpackEntry *vals = static_cast<listpackEntry *>(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *keys = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
+    listpackEntry *vals = (listpackEntry *)(zmalloc(sizeof(listpackEntry) * count));
 
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("123")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("456")), 3);
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("def")), 3);
+    lp = lpAppend(lp, (unsigned char *)("abc"), 3);
+    lp = lpAppend(lp, (unsigned char *)("123"), 3);
+    lp = lpAppend(lp, (unsigned char *)("456"), 3);
+    lp = lpAppend(lp, (unsigned char *)("def"), 3);
     picked = lpRandomPairsUnique(lp, count, keys, vals);
-    EXPECT_EQ(picked, 2u);
+    ASSERT_EQ(picked, 2u);
     for (unsigned i = 0; i < 2; i++) {
         if (keys[i].sval) {
-            EXPECT_EQ(memcmp(keys[i].sval, "abc", keys[i].slen), 0);
-            EXPECT_EQ(keys[i].slen, 3u);
-            EXPECT_EQ(vals[i].lval, 123);
+            ASSERT_EQ(memcmp(keys[i].sval, "abc", keys[i].slen), 0);
+            ASSERT_EQ(keys[i].slen, 3u);
+            ASSERT_EQ(vals[i].lval, 123);
         }
         if (!keys[i].sval) {
-            EXPECT_EQ(keys[i].lval, 456);
-            EXPECT_EQ(memcmp(vals[i].sval, "def", vals[i].slen), 0);
+            ASSERT_EQ(keys[i].lval, 456);
+            ASSERT_EQ(memcmp(vals[i].sval, "def", vals[i].slen), 0);
         }
     }
     zfree(keys);
@@ -885,48 +886,48 @@ TEST_F(ListpackTest, listpackPushVariousEncodings) {
     lp = lpNew(0);
 
     /* Push integer encode element using lpAppend */
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("127")), 3);
-    EXPECT_TRUE(LP_ENCODING_IS_7BIT_UINT(lpLast(lp)[0]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("4095")), 4);
-    EXPECT_TRUE(LP_ENCODING_IS_13BIT_INT(lpLast(lp)[0]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("32767")), 5);
-    EXPECT_TRUE(LP_ENCODING_IS_16BIT_INT(lpLast(lp)[0]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("8388607")), 7);
-    EXPECT_TRUE(LP_ENCODING_IS_24BIT_INT(lpLast(lp)[0]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("2147483647")), 10);
-    EXPECT_TRUE(LP_ENCODING_IS_32BIT_INT(lpLast(lp)[0]));
-    lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("9223372036854775807")), 19);
-    EXPECT_TRUE(LP_ENCODING_IS_64BIT_INT(lpLast(lp)[0]));
+    lp = lpAppend(lp, (unsigned char *)("127"), 3);
+    ASSERT_TRUE(LP_ENCODING_IS_7BIT_UINT(lpLast(lp)[0]));
+    lp = lpAppend(lp, (unsigned char *)("4095"), 4);
+    ASSERT_TRUE(LP_ENCODING_IS_13BIT_INT(lpLast(lp)[0]));
+    lp = lpAppend(lp, (unsigned char *)("32767"), 5);
+    ASSERT_TRUE(LP_ENCODING_IS_16BIT_INT(lpLast(lp)[0]));
+    lp = lpAppend(lp, (unsigned char *)("8388607"), 7);
+    ASSERT_TRUE(LP_ENCODING_IS_24BIT_INT(lpLast(lp)[0]));
+    lp = lpAppend(lp, (unsigned char *)("2147483647"), 10);
+    ASSERT_TRUE(LP_ENCODING_IS_32BIT_INT(lpLast(lp)[0]));
+    lp = lpAppend(lp, (unsigned char *)("9223372036854775807"), 19);
+    ASSERT_TRUE(LP_ENCODING_IS_64BIT_INT(lpLast(lp)[0]));
 
     /* Push integer encode element using lpAppendInteger */
     lp = lpAppendInteger(lp, 127);
-    EXPECT_TRUE(LP_ENCODING_IS_7BIT_UINT(lpLast(lp)[0]));
-    verifyEntry(lpLast(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("127")), 3);
+    ASSERT_TRUE(LP_ENCODING_IS_7BIT_UINT(lpLast(lp)[0]));
+    verifyEntry(lpLast(lp), (unsigned char *)("127"), 3);
     lp = lpAppendInteger(lp, 4095);
-    verifyEntry(lpLast(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("4095")), 4);
-    EXPECT_TRUE(LP_ENCODING_IS_13BIT_INT(lpLast(lp)[0]));
+    verifyEntry(lpLast(lp), (unsigned char *)("4095"), 4);
+    ASSERT_TRUE(LP_ENCODING_IS_13BIT_INT(lpLast(lp)[0]));
     lp = lpAppendInteger(lp, 32767);
-    verifyEntry(lpLast(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("32767")), 5);
-    EXPECT_TRUE(LP_ENCODING_IS_16BIT_INT(lpLast(lp)[0]));
+    verifyEntry(lpLast(lp), (unsigned char *)("32767"), 5);
+    ASSERT_TRUE(LP_ENCODING_IS_16BIT_INT(lpLast(lp)[0]));
     lp = lpAppendInteger(lp, 8388607);
-    verifyEntry(lpLast(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("8388607")), 7);
-    EXPECT_TRUE(LP_ENCODING_IS_24BIT_INT(lpLast(lp)[0]));
+    verifyEntry(lpLast(lp), (unsigned char *)("8388607"), 7);
+    ASSERT_TRUE(LP_ENCODING_IS_24BIT_INT(lpLast(lp)[0]));
     lp = lpAppendInteger(lp, 2147483647);
-    verifyEntry(lpLast(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("2147483647")), 10);
-    EXPECT_TRUE(LP_ENCODING_IS_32BIT_INT(lpLast(lp)[0]));
+    verifyEntry(lpLast(lp), (unsigned char *)("2147483647"), 10);
+    ASSERT_TRUE(LP_ENCODING_IS_32BIT_INT(lpLast(lp)[0]));
     lp = lpAppendInteger(lp, 9223372036854775807);
-    verifyEntry(lpLast(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("9223372036854775807")), 19);
-    EXPECT_TRUE(LP_ENCODING_IS_64BIT_INT(lpLast(lp)[0]));
+    verifyEntry(lpLast(lp), (unsigned char *)("9223372036854775807"), 19);
+    ASSERT_TRUE(LP_ENCODING_IS_64BIT_INT(lpLast(lp)[0]));
 
     /* string encode */
-    unsigned char *str = static_cast<unsigned char *>(zmalloc(65535));
+    unsigned char *str = (unsigned char *)(zmalloc(65535));
     memset(str, 0, 65535);
     lp = lpAppend(lp, str, 63);
-    EXPECT_TRUE(LP_ENCODING_IS_6BIT_STR(lpLast(lp)[0]));
+    ASSERT_TRUE(LP_ENCODING_IS_6BIT_STR(lpLast(lp)[0]));
     lp = lpAppend(lp, str, 4095);
-    EXPECT_TRUE(LP_ENCODING_IS_12BIT_STR(lpLast(lp)[0]));
+    ASSERT_TRUE(LP_ENCODING_IS_12BIT_STR(lpLast(lp)[0]));
     lp = lpAppend(lp, str, 65535);
-    EXPECT_TRUE(LP_ENCODING_IS_32BIT_STR(lpLast(lp)[0]));
+    ASSERT_TRUE(LP_ENCODING_IS_32BIT_STR(lpLast(lp)[0]));
     zfree(str);
     lpFree(lp);
 }
@@ -936,11 +937,11 @@ TEST_F(ListpackTest, listpackLpFind) {
     unsigned char *lp;
 
     lp = createList();
-    EXPECT_EQ(lpFind(lp, lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("abc")), 3, 0), nullptr);
-    verifyEntry(lpFind(lp, lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5, 0),
-                reinterpret_cast<unsigned char *>(const_cast<char *>("hello")), 5);
-    verifyEntry(lpFind(lp, lpFirst(lp), reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4, 0),
-                reinterpret_cast<unsigned char *>(const_cast<char *>("1024")), 4);
+    ASSERT_EQ(lpFind(lp, lpFirst(lp), (unsigned char *)("abc"), 3, 0), nullptr);
+    verifyEntry(lpFind(lp, lpFirst(lp), (unsigned char *)("hello"), 5, 0),
+                (unsigned char *)("hello"), 5);
+    verifyEntry(lpFind(lp, lpFirst(lp), (unsigned char *)("1024"), 4, 0),
+                (unsigned char *)("1024"), 4);
     lpFree(lp);
 }
 
@@ -950,7 +951,7 @@ TEST_F(ListpackTest, listpackLpValidateIntegrity) {
 
     lp = createList();
     long count = 0;
-    EXPECT_EQ(lpValidateIntegrity(lp, lpBytes(lp), 1, lpValidation, &count), 1);
+    ASSERT_EQ(lpValidateIntegrity(lp, lpBytes(lp), 1, lpValidation, &count), 1);
     lpFree(lp);
 }
 
@@ -960,15 +961,15 @@ TEST_F(ListpackTest, listpackNumberOfElementsExceedsLP_HDR_NUMELE_UNKNOWN) {
 
     lp = lpNew(0);
     for (uint32_t i = 0; i < LP_HDR_NUMELE_UNKNOWN + 1; i++)
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("1")), 1);
+        lp = lpAppend(lp, (unsigned char *)("1"), 1);
 
-    EXPECT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN);
-    EXPECT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN_UL + 1);
+    ASSERT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN);
+    ASSERT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN_UL + 1);
 
     lp = lpDeleteRange(lp, -2, 2);
-    EXPECT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN);
-    EXPECT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN_UL - 1);
-    EXPECT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN - 1); /* update length after lpLength */
+    ASSERT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN);
+    ASSERT_EQ(lpLength(lp), LP_HDR_NUMELE_UNKNOWN_UL - 1);
+    ASSERT_EQ(lpGetNumElements(lp), LP_HDR_NUMELE_UNKNOWN - 1); /* update length after lpLength */
     lpFree(lp);
 }
 
@@ -1013,9 +1014,9 @@ TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
 
             /* Add to listpack */
             if (where == 0) {
-                lp = lpPrepend(lp, reinterpret_cast<unsigned char *>(buf), buflen);
+                lp = lpPrepend(lp, (unsigned char *)(buf), buflen);
             } else {
-                lp = lpAppend(lp, reinterpret_cast<unsigned char *>(buf), buflen);
+                lp = lpAppend(lp, (unsigned char *)(buf), buflen);
             }
 
             /* Add to reference list */
@@ -1028,7 +1029,7 @@ TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
             }
         }
 
-        EXPECT_EQ(listLength(ref), lpLength(lp));
+        ASSERT_EQ(listLength(ref), lpLength(lp));
         for (j = 0; j < len; j++) {
             /* Naive way to get elements, but similar to the stresser
              * executed from the Tcl test suite. */
@@ -1036,7 +1037,7 @@ TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
             refnode = listIndex(ref, j);
 
             vstr = lpGet(p, &vlen, intbuf);
-            EXPECT_EQ(memcmp(vstr, listNodeValue(refnode), vlen), 0);
+            ASSERT_EQ(memcmp(vstr, listNodeValue(refnode), vlen), 0);
         }
         lpFree(lp);
         listRelease(ref);
@@ -1088,16 +1089,16 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkLpAppend) {
     unsigned long long start = usec();
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(buf), 4);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(buf), 40);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(buf), 400);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(buf), 4000);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("1")), 1);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("10")), 2);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("100")), 3);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("1000")), 4);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("10000")), 5);
-        lp = lpAppend(lp, reinterpret_cast<unsigned char *>(const_cast<char *>("100000")), 6);
+        lp = lpAppend(lp, (unsigned char *)(buf), 4);
+        lp = lpAppend(lp, (unsigned char *)(buf), 40);
+        lp = lpAppend(lp, (unsigned char *)(buf), 400);
+        lp = lpAppend(lp, (unsigned char *)(buf), 4000);
+        lp = lpAppend(lp, (unsigned char *)("1"), 1);
+        lp = lpAppend(lp, (unsigned char *)("10"), 2);
+        lp = lpAppend(lp, (unsigned char *)("100"), 3);
+        lp = lpAppend(lp, (unsigned char *)("1000"), 4);
+        lp = lpAppend(lp, (unsigned char *)("10000"), 5);
+        lp = lpAppend(lp, (unsigned char *)("100000"), 6);
     }
     printf("Done. usec=%lld\n", usec() - start);
 }
@@ -1107,7 +1108,7 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkLpFindString) {
     unsigned long long start = usec();
     for (int i = 0; i < 2000; i++) {
         unsigned char *fptr = lpFirst(lp);
-        fptr = lpFind(lp, fptr, reinterpret_cast<unsigned char *>(const_cast<char *>("nothing")), 7, 1);
+        fptr = lpFind(lp, fptr, (unsigned char *)("nothing"), 7, 1);
     }
     printf("Done. usec=%lld\n", usec() - start);
 }
@@ -1117,7 +1118,7 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkLpFindNumber) {
     unsigned long long start = usec();
     for (int i = 0; i < 2000; i++) {
         unsigned char *fptr = lpFirst(lp);
-        fptr = lpFind(lp, fptr, reinterpret_cast<unsigned char *>(const_cast<char *>("99999")), 5, 1);
+        fptr = lpFind(lp, fptr, (unsigned char *)("99999"), 5, 1);
     }
     printf("Done. usec=%lld\n", usec() - start);
 }
@@ -1146,7 +1147,7 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkLpCompareWithString) {
     for (int i = 0; i < 2000; i++) {
         unsigned char *eptr = lpSeek(lp, 0);
         while (eptr != nullptr) {
-            lpCompare(eptr, reinterpret_cast<unsigned char *>(const_cast<char *>("nothing")), 7);
+            lpCompare(eptr, (unsigned char *)("nothing"), 7);
             eptr = lpNext(lp, eptr);
         }
     }
@@ -1159,7 +1160,7 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkLpCompareWithNumber) {
     for (int i = 0; i < 2000; i++) {
         unsigned char *eptr = lpSeek(lp, 0);
         while (eptr != nullptr) {
-            lpCompare(eptr, reinterpret_cast<unsigned char *>(const_cast<char *>("99999")), 5);
+            lpCompare(eptr, (unsigned char *)("99999"), 5);
             eptr = lpNext(lp, eptr);
         }
     }
@@ -1170,5 +1171,5 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkFree) {
     /* Free benchmark listpack - handled by TearDownTestSuite but included for parity with C tests */
     // The actual cleanup is done in TearDownTestSuite, but we include this test
     // to maintain the same test structure as test_listpack.c
-    EXPECT_NE(lp, nullptr);
+    ASSERT_NE(lp, nullptr);
 }

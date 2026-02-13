@@ -20,13 +20,13 @@ TEST_F(EndianconvTest, TestEndianconv) {
 
     snprintf(buf, sizeof(buf), "ciaoroma");
     memrev16(buf);
-    EXPECT_STREQ(buf, "icaoroma");
+    ASSERT_STREQ(buf, "icaoroma");
 
     snprintf(buf, sizeof(buf), "ciaoroma");
     memrev32(buf);
-    EXPECT_STREQ(buf, "oaicroma");
+    ASSERT_STREQ(buf, "oaicroma");
 
     snprintf(buf, sizeof(buf), "ciaoroma");
     memrev64(buf);
-    EXPECT_STREQ(buf, "amoroaic");
+    ASSERT_STREQ(buf, "amoroaic");
 }

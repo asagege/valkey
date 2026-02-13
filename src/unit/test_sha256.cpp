@@ -39,10 +39,10 @@ TEST_F(Sha256Test, TestSha256Abc) {
     const char *test_str = "abc";
 
     sha256_init(&ctx);
-    sha256_update(&ctx, reinterpret_cast<BYTE *>(const_cast<char *>(test_str)), 3);
+    sha256_update(&ctx, (BYTE *)test_str, 3);
     sha256_final(&ctx, hash);
 
-    EXPECT_EQ(memcmp(hash, expected, 32), 0);
+    ASSERT_EQ(memcmp(hash, expected, 32), 0);
 }
 
 TEST_F(Sha256Test, TestSha256Large) {
@@ -63,7 +63,7 @@ TEST_F(Sha256Test, TestSha256Large) {
         sha256_update(&ctx, buf, BUFSIZE);
     sha256_final(&ctx, hash);
 
-    EXPECT_EQ(memcmp(hash, expected, 32), 0);
+    ASSERT_EQ(memcmp(hash, expected, 32), 0);
 }
 
 TEST_F(Sha256Test, TestSha256MillionA) {
@@ -82,5 +82,5 @@ TEST_F(Sha256Test, TestSha256MillionA) {
         sha256_update(&ctx, &a, 1);
     sha256_final(&ctx, hash);
 
-    EXPECT_EQ(memcmp(hash, expected, 32), 0);
+    ASSERT_EQ(memcmp(hash, expected, 32), 0);
 }

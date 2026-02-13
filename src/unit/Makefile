@@ -19,14 +19,12 @@ DEPENDS := $(patsubst %.cpp,%.d,$(SOURCES))
 TEST_CFLAGS := $(CFLAGS)
 
 # Hold new gtest test to a high standard
-MORE_WARNINGS=-Wold-style-cast \
-	-Wno-variadic-macros \
+MORE_WARNINGS=-Wno-variadic-macros \
 	-Werror \
 	-Wpedantic \
 	-Wextra \
 	-Wall \
 	-Wcast-align \
-	-Wcast-qual \
 	-Wframe-larger-than=32768 \
 	-Wno-strict-overflow \
 	-Wsign-compare \
@@ -217,6 +215,7 @@ all: valkey-unit-gtests
 .PHONY: test-unit
 test-unit: valkey-unit-gtests
 	python3 ../../deps/gtest-parallel/gtest_parallel.py ./valkey-unit-gtests
+	@printf '\033[32mAll UNIT TESTS PASSED!\033[0m\n'
 
 .PHONY: valgrind
 valgrind: valkey-unit-gtests

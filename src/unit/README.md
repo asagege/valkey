@@ -72,8 +72,7 @@ gtest unit tests that you can filter/play with:
 
    ```bash
    make valkey-unit-gtests
-   ./src/unit/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
-   ./src/unit/valkey-unit-gtests --gtest_filter=<TEST_CLASS_NAME.TEST_NAME_PREFIX>
+   ./src/unit/valkey-unit-gtests --gtest_filter='TEST_CLASS_NAME.TEST_NAME_PREFIX*'
    ```
 
 5. Building and running with CMake

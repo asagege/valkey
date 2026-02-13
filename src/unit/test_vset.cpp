@@ -6,6 +6,7 @@
 
 #include "generated_wrappers.hpp"
 
+#include <cassert>
 #include <climits>
 #include <cstdio>
 #include <cstring>
@@ -32,7 +33,7 @@ static mock_entry *mockCreateEntry(const char *keystr, long long expiry) {
 }
 
 static void mockFreeEntry(void *entry) {
-    entryFree(static_cast<mock_entry *>(entry));
+    entryFree((mock_entry *)(entry));
 }
 
 static mock_entry *mockEntryUpdate(mock_entry *entry, long long expiry) {
@@ -44,7 +45,7 @@ static mock_entry *mockEntryUpdate(mock_entry *entry, long long expiry) {
 }
 
 static long long mockGetExpiry(const void *entry) {
-    return entryGetExpiry(static_cast<const mock_entry *>(entry));
+    return entryGetExpiry((const mock_entry *)(entry));
 }
 
 /* Global array to simulate a test database */
@@ -57,9 +58,9 @@ static long long mock_entry_get_expiry(const void *entry) {
 }
 
 static int mock_entry_expire(void *entry, void *ctx) {
-    mock_entry *e = static_cast<mock_entry *>(entry);
-    long long now = *static_cast<long long *>(ctx);
-    EXPECT_LE(mock_entry_get_expiry(entry), now);
+    mock_entry *e = (mock_entry *)(entry);
+    long long now = *(long long *)(ctx);
+    assert(mock_entry_get_expiry(entry) <= now);
     for (int i = 0; i < mock_entry_count; i++) {
         if (mock_entries[i] == e) {
             mockFreeEntry(e);
@@ -82,7 +83,7 @@ static int insert_mock_entry(vset *set) {
 
     long long expiry = rand() % 10000 + 100;
     mock_entry *e = mock_entry_create(keybuf, expiry);
-    EXPECT_TRUE(vsetAddEntry(set, mockGetExpiry, e));
+    assert(vsetAddEntry(set, mockGetExpiry, e));
     mock_entries[mock_entry_count++] = e;
     return 0;
 }
@@ -93,7 +94,7 @@ static int insert_mock_entry_with_expiry(vset *set, long long expiry) {
     snprintf(keybuf, sizeof(keybuf), "key_%d", mock_entry_count);
 
     mock_entry *e = mock_entry_create(keybuf, expiry);
-    EXPECT_TRUE(vsetAddEntry(set, mockGetExpiry, e));
+    assert(vsetAddEntry(set, mockGetExpiry, e));
     mock_entries[mock_entry_count++] = e;
     return 0;
 }
@@ -106,7 +107,7 @@ static int update_mock_entry(vset *set) {
     long long new_expiry = old_expiry + (rand() % 500);
     mock_entry *updated = mockEntryUpdate(old, new_expiry);
     mock_entries[idx] = updated;
-    EXPECT_TRUE(vsetUpdateEntry(set, mockGetExpiry, old, updated, old_expiry, new_expiry));
+    assert(vsetUpdateEntry(set, mockGetExpiry, old, updated, old_expiry, new_expiry));
     return 0;
 }
 
@@ -114,7 +115,7 @@ static int remove_mock_entry(vset *set) {
     if (mock_entry_count == 0) return 0;
     int idx = rand() % mock_entry_count;
     mock_entry *e = mock_entries[idx];
-    EXPECT_TRUE(vsetRemoveEntry(set, mockGetExpiry, e));
+    assert(vsetRemoveEntry(set, mockGetExpiry, e));
     mockFreeEntry(e);
     mock_entries[idx] = mock_entries[--mock_entry_count];
     return 0;
@@ -169,10 +170,10 @@ TEST_F(VsetTest, TestVsetAddAndIterate) {
     mock_entry *e1 = mockCreateEntry("item1", 123);
     mock_entry *e2 = mockCreateEntry("item2", 456);
 
-    EXPECT_TRUE(vsetAddEntry(&set, mockGetExpiry, e1));
-    EXPECT_TRUE(vsetAddEntry(&set, mockGetExpiry, e2));
+    ASSERT_TRUE(vsetAddEntry(&set, mockGetExpiry, e1));
+    ASSERT_TRUE(vsetAddEntry(&set, mockGetExpiry, e2));
 
-    EXPECT_FALSE(vsetIsEmpty(&set));
+    ASSERT_FALSE(vsetIsEmpty(&set));
 
     vsetIterator it;
     vsetInitIterator(&set, &it);
@@ -180,11 +181,11 @@ TEST_F(VsetTest, TestVsetAddAndIterate) {
     void *entry;
     int count = 0;
     while (vsetNext(&it, &entry)) {
-        EXPECT_NE(entry, nullptr);
+        ASSERT_NE(entry, nullptr);
         count++;
     }
 
-    EXPECT_EQ(count, 2);
+    ASSERT_EQ(count, 2);
 
     vsetResetIterator(&it);
     vsetRelease(&set);
@@ -199,17 +200,17 @@ TEST_F(VsetTest, TestVsetLargeBatchSameExpiry) {
     const long long expiry_time = 1000LL;
     const int total_entries = 200;
 
-    mock_entry **entries = static_cast<mock_entry **>(zmalloc(sizeof(mock_entry *) * total_entries));
+    mock_entry **entries = (mock_entry **)(zmalloc(sizeof(mock_entry *) * total_entries));
     ASSERT_NE(entries, nullptr);
 
     for (int i = 0; i < total_entries; i++) {
         char key_buf[32];
         snprintf(key_buf, sizeof(key_buf), "entry_%d", i);
         entries[i] = mockCreateEntry(key_buf, expiry_time);
-        EXPECT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
     }
 
-    EXPECT_FALSE(vsetIsEmpty(&set));
+    ASSERT_FALSE(vsetIsEmpty(&set));
 
     vsetIterator it;
     vsetInitIterator(&set, &it);
@@ -217,10 +218,10 @@ TEST_F(VsetTest, TestVsetLargeBatchSameExpiry) {
     void *entry;
     int count = 0;
     while (vsetNext(&it, &entry)) {
-        EXPECT_NE(entry, nullptr);
+        ASSERT_NE(entry, nullptr);
         count++;
     }
-    EXPECT_EQ(count, total_entries);
+    ASSERT_EQ(count, total_entries);
 
     vsetResetIterator(&it);
     vsetRelease(&set);
@@ -244,21 +245,21 @@ TEST_F(VsetTest, TestVsetLargeBatchUpdateEntrySameExpiry) {
         char key_buf[32];
         snprintf(key_buf, sizeof(key_buf), "entry_%d", i);
         entries[i] = mockCreateEntry(key_buf, expiry_time);
-        EXPECT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
     }
-    EXPECT_FALSE(vsetIsEmpty(&set));
+    ASSERT_FALSE(vsetIsEmpty(&set));
 
     for (unsigned int i = 0; i < total_entries; i++) {
         mock_entry *old_entry = entries[i];
         entries[i] = mockEntryUpdate(entries[i], expiry_time);
-        EXPECT_TRUE(vsetUpdateEntry(&set, mockGetExpiry, old_entry, entries[i], expiry_time, expiry_time));
+        ASSERT_TRUE(vsetUpdateEntry(&set, mockGetExpiry, old_entry, entries[i], expiry_time, expiry_time));
     }
 
     for (unsigned int i = 0; i < total_entries; i++) {
-        EXPECT_TRUE(vsetRemoveEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetRemoveEntry(&set, mockGetExpiry, entries[i]));
     }
 
-    EXPECT_TRUE(vsetIsEmpty(&set));
+    ASSERT_TRUE(vsetIsEmpty(&set));
 
     for (unsigned int i = 0; i < total_entries; i++) {
         mockFreeEntry(entries[i]);
@@ -278,23 +279,23 @@ TEST_F(VsetTest, TestVsetLargeBatchUpdateEntryMultipleExpiries) {
         snprintf(key_buf, sizeof(key_buf), "entry_%d", i);
         long long expiry_time = rand() % 10000;
         entries[i] = mockCreateEntry(key_buf, expiry_time);
-        EXPECT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
     }
-    EXPECT_FALSE(vsetIsEmpty(&set));
+    ASSERT_FALSE(vsetIsEmpty(&set));
 
     for (unsigned int i = 0; i < total_entries; i++) {
         mock_entry *old_entry = entries[i];
         long long old_expiry = entryGetExpiry(entries[i]);
         long long new_expiry = old_expiry + rand() % 100000;
         entries[i] = mockEntryUpdate(entries[i], new_expiry);
-        EXPECT_TRUE(vsetUpdateEntry(&set, mockGetExpiry, old_entry, entries[i], old_expiry, new_expiry));
+        ASSERT_TRUE(vsetUpdateEntry(&set, mockGetExpiry, old_entry, entries[i], old_expiry, new_expiry));
     }
 
     for (unsigned int i = 0; i < total_entries; i++) {
-        EXPECT_TRUE(vsetRemoveEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetRemoveEntry(&set, mockGetExpiry, entries[i]));
     }
 
-    EXPECT_TRUE(vsetIsEmpty(&set));
+    ASSERT_TRUE(vsetIsEmpty(&set));
 
     for (unsigned int i = 0; i < total_entries; i++) {
         mockFreeEntry(entries[i]);
@@ -314,7 +315,7 @@ TEST_F(VsetTest, TestVsetIterateMultipleExpiries) {
         snprintf(key_buf, sizeof(key_buf), "entry_%d", i);
         long long expiry_time = rand() % 10000;
         entries[i] = mockCreateEntry(key_buf, expiry_time);
-        EXPECT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
     }
 
     vsetIterator it;
@@ -325,8 +326,8 @@ TEST_F(VsetTest, TestVsetIterateMultipleExpiries) {
 
     void *entry;
     while (vsetNext(&it, &entry)) {
-        EXPECT_NE(entry, nullptr);
-        mock_entry *e = static_cast<mock_entry *>(entry);
+        ASSERT_NE(entry, nullptr);
+        mock_entry *e = (mock_entry *)(entry);
 
         for (int i = 0; i < 5; i++) {
             if (strcmp(entryGetField(e), entryGetField(entries[i])) == 0) {
@@ -337,10 +338,10 @@ TEST_F(VsetTest, TestVsetIterateMultipleExpiries) {
         total++;
     }
 
-    EXPECT_EQ(total, 5);
+    ASSERT_EQ(total, 5);
 
     for (int i = 0; i < 5; i++) {
-        EXPECT_TRUE(found[i]);
+        ASSERT_TRUE(found[i]);
     }
 
     vsetResetIterator(&it);
@@ -360,15 +361,15 @@ TEST_F(VsetTest, TestVsetAddAndRemoveAll) {
         char key[32];
         snprintf(key, sizeof(key), "key_%d", i);
         entries[i] = mockCreateEntry(key, expiry);
-        EXPECT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetAddEntry(&set, mockGetExpiry, entries[i]));
     }
 
     for (int i = 0; i < total_entries; i++) {
-        EXPECT_TRUE(vsetRemoveEntry(&set, mockGetExpiry, entries[i]));
+        ASSERT_TRUE(vsetRemoveEntry(&set, mockGetExpiry, entries[i]));
         mockFreeEntry(entries[i]);
     }
 
-    EXPECT_TRUE(vsetIsEmpty(&set));
+    ASSERT_TRUE(vsetIsEmpty(&set));
     vsetRelease(&set);
 }
 
@@ -383,17 +384,17 @@ TEST_F(VsetTest, TestVsetRemoveExpireShrink) {
         insert_mock_entry_with_expiry(&set, expiry_time);
     }
 
-    EXPECT_FALSE(vsetIsEmpty(&set));
+    ASSERT_FALSE(vsetIsEmpty(&set));
     mstime_t now = expiry_time + 10000;
     size_t count = vsetRemoveExpired(&set, mockGetExpiry, mock_entry_expire, now, mock_entry_count - 1, &now);
 
-    EXPECT_EQ(count, total_entries - 1);
+    ASSERT_EQ(count, total_entries - 1);
 
-    EXPECT_FALSE(vsetIsEmpty(&set));
+    ASSERT_FALSE(vsetIsEmpty(&set));
 
-    EXPECT_EQ(vsetRemoveExpired(&set, mockGetExpiry, mock_entry_expire, now, mock_entry_count, &now), 1u);
+    ASSERT_EQ(vsetRemoveExpired(&set, mockGetExpiry, mock_entry_expire, now, mock_entry_count, &now), 1u);
 
-    EXPECT_TRUE(vsetIsEmpty(&set));
+    ASSERT_TRUE(vsetIsEmpty(&set));
 
     vsetRelease(&set);
 }
@@ -405,22 +406,22 @@ TEST_F(VsetTest, TestVsetDefrag) {
     vsetInit(&set);
 
     /* defrag empty set */
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
+    ASSERT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     /* defrag when single entry */
     insert_mock_entry(&set);
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
+    ASSERT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     /* defrag when vector */
     for (int i = 0; i < 127 - 1; i++)
         insert_mock_entry(&set);
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
+    ASSERT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     long long expiry = rand() % 10000 + 100;
     for (int i = 0; i < 127 * 2; i++) {
         insert_mock_entry_with_expiry(&set, expiry);
     }
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
+    ASSERT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     size_t cursor = 0;
     for (int i = 0; i < 100000; i++) {
@@ -428,7 +429,7 @@ TEST_F(VsetTest, TestVsetDefrag) {
             cursor = defrag_vset(&set, cursor, 100);
         insert_mock_entry_with_expiry(&set, expiry);
     }
-    EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
+    ASSERT_EQ(defrag_vset(&set, 0, 0), 0u);
 
     vsetRelease(&set);
 }
@@ -453,7 +454,7 @@ TEST_F(VsetTest, TestVsetFuzzer) {
             remove_mock_entry(&set);
             break;
         case 4:
-            EXPECT_EQ(defrag_vset(&set, 0, 0), 0u);
+            ASSERT_EQ(defrag_vset(&set, 0, 0), 0u);
             break;
         }
 
@@ -464,6 +465,6 @@ TEST_F(VsetTest, TestVsetFuzzer) {
     }
     /* now expire all the entries and check that we have no entries left */
     expire_mock_entries(&set, LLONG_MAX);
-    EXPECT_TRUE(vsetIsEmpty(&set) && mock_entry_count == 0);
+    ASSERT_TRUE(vsetIsEmpty(&set) && mock_entry_count == 0);
     vsetRelease(&set);
 }

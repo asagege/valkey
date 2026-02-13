@@ -29,5 +29,5 @@ TEST_F(Sha1Test, TestSha1) {
     for (i = 0; i < 1000; i++) SHA1Update(&ctx, buf, BUFSIZE);
     SHA1Final(hash, &ctx);
 
-    EXPECT_EQ(memcmp(hash, expected, 20), 0);
+    ASSERT_EQ(memcmp(hash, expected, 20), 0);
 }
