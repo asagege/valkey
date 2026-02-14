@@ -29,7 +29,7 @@ uint8_t testOnlyIntsetSearch(intset *is, int64_t value, uint32_t *pos);
 static long long usec(void) {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
-    return ((long long)(tv.tv_sec) * 1000000) + tv.tv_usec;
+    return ((long long)tv.tv_sec * 1000000) + tv.tv_usec;
 }
 
 static intset *createSet(int bits, int size) {
@@ -48,6 +48,7 @@ static intset *createSet(int bits, int size) {
     return is;
 }
 
+/* Use memcpy to avoid strict aliasing violations and potential alignment issues. */
 static int checkConsistency(intset *is) {
     for (uint32_t i = 0; i < (intrev32ifbe(is->length) - 1); i++) {
         uint32_t encoding = intrev32ifbe(is->encoding);

@@ -18,11 +18,11 @@ extern "C" {
 }
 
 static inline void *intToPointer(intptr_t i) {
-    return (void *)(i);
+    return (void *)i;
 }
 
 static inline intptr_t pointerToInt(void *p) {
-    return (intptr_t)(p);
+    return (intptr_t)p;
 }
 
 class FifoTest : public ::testing::Test {
@@ -168,7 +168,7 @@ static void exerciseList(void) {
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
         listAddNodeTail(q, intToPointer(i));
     }
-    EXPECT_EQ(listLength(q), (unsigned)(LIST_ITEMS));
+    EXPECT_EQ(listLength(q), (unsigned)LIST_ITEMS);
     for (intptr_t i = 0; i < LIST_ITEMS; i++) {
         listNode *node = listFirst(q);
         listDelNode(q, node);

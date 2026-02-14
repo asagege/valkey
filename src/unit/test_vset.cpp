@@ -6,6 +6,8 @@
 
 #include "generated_wrappers.hpp"
 
+/* Ensure assert() is never compiled out, even in Release builds. */
+#undef NDEBUG
 #include <cassert>
 #include <climits>
 #include <cstdio>
@@ -33,7 +35,7 @@ static mock_entry *mockCreateEntry(const char *keystr, long long expiry) {
 }
 
 static void mockFreeEntry(void *entry) {
-    entryFree((mock_entry *)(entry));
+    entryFree((mock_entry *)entry);
 }
 
 static mock_entry *mockEntryUpdate(mock_entry *entry, long long expiry) {
@@ -45,7 +47,7 @@ static mock_entry *mockEntryUpdate(mock_entry *entry, long long expiry) {
 }
 
 static long long mockGetExpiry(const void *entry) {
-    return entryGetExpiry((const mock_entry *)(entry));
+    return entryGetExpiry((const mock_entry *)entry);
 }
 
 /* Global array to simulate a test database */
@@ -58,9 +60,10 @@ static long long mock_entry_get_expiry(const void *entry) {
 }
 
 static int mock_entry_expire(void *entry, void *ctx) {
-    mock_entry *e = (mock_entry *)(entry);
-    long long now = *(long long *)(ctx);
-    assert(mock_entry_get_expiry(entry) <= now);
+    mock_entry *e = (mock_entry *)entry;
+    long long now = *(long long *)ctx;
+    (void)now;
+    serverAssert(mock_entry_get_expiry(entry) <= now);
     for (int i = 0; i < mock_entry_count; i++) {
         if (mock_entries[i] == e) {
             mockFreeEntry(e);
@@ -131,6 +134,14 @@ static void *mock_defragfn(void *ptr) {
     void *newptr = zmalloc(size);
     memcpy(newptr, ptr, size);
     zfree(ptr);
+    /* Update mock_entries to track the new pointer so that expire/remove
+     * callbacks can still find the entry after defrag. */
+    for (int i = 0; i < mock_entry_count; i++) {
+        if ((void *)mock_entries[i] == ptr) {
+            mock_entries[i] = (mock_entry *)newptr;
+            break;
+        }
+    }
     return newptr;
 }
 
@@ -200,7 +211,7 @@ TEST_F(VsetTest, TestVsetLargeBatchSameExpiry) {
     const long long expiry_time = 1000LL;
     const int total_entries = 200;
 
-    mock_entry **entries = (mock_entry **)(zmalloc(sizeof(mock_entry *) * total_entries));
+    mock_entry **entries = (mock_entry **)zmalloc(sizeof(mock_entry *) * total_entries);
     ASSERT_NE(entries, nullptr);
 
     for (int i = 0; i < total_entries; i++) {
@@ -327,7 +338,7 @@ TEST_F(VsetTest, TestVsetIterateMultipleExpiries) {
     void *entry;
     while (vsetNext(&it, &entry)) {
         ASSERT_NE(entry, nullptr);
-        mock_entry *e = (mock_entry *)(entry);
+        mock_entry *e = (mock_entry *)entry;
 
         for (int i = 0; i < 5; i++) {
             if (strcmp(entryGetField(e), entryGetField(entries[i])) == 0) {

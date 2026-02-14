@@ -19,6 +19,8 @@ bool accurate = false;
 bool large_memory = false;
 bool valgrind = false;
 char *seed = nullptr;
+int test_argc = 0;
+char **test_argv = nullptr;
 
 bool hasFlag(int argc, char **argv, const char *flag) {
     for (int i = 1; i < argc; i++) {
@@ -35,12 +37,14 @@ char *getFlagValue(int argc, char **argv, const char *flag) {
 }
 
 int main(int argc, char **argv) {
+    test_argc = argc;
+    test_argv = argv;
     accurate = hasFlag(argc, argv, "--accurate");
     large_memory = hasFlag(argc, argv, "--large-memory");
     valgrind = hasFlag(argc, argv, "--valgrind");
     seed = getFlagValue(argc, argv, "--seed");
     if (seed) {
-        unsigned int seed_value = (unsigned int)(atoi(seed));
+        unsigned int seed_value = (unsigned int)atoi(seed);
         srandom(seed_value);
         srand(seed_value);
 
@@ -52,7 +56,7 @@ int main(int argc, char **argv) {
 
         // First hash
         sha256_init(&ctx);
-        sha256_update(&ctx, (const unsigned char *)(seed), strlen(seed));
+        sha256_update(&ctx, (const unsigned char *)seed, strlen(seed));
         sha256_final(&ctx, hash);
 
         // Convert first hash to hex (32 bytes = 64 hex chars)

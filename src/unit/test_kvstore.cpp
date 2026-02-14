@@ -11,7 +11,7 @@ extern "C" {
 }
 
 uint64_t hashTestCallback(const void *key) {
-    return hashtableGenHashFunction((const char *)(key), strlen((const char *)(key)));
+    return hashtableGenHashFunction((const char *)key, strlen((const char *)key));
 }
 
 uint64_t hashConflictTestCallback(const void *key) {
@@ -20,42 +20,16 @@ uint64_t hashConflictTestCallback(const void *key) {
 }
 
 int cmpTestCallback(const void *k1, const void *k2) {
-    return strcmp((const char *)(k1), (const char *)(k2));
+    return strcmp((const char *)k1, (const char *)k2);
 }
 
 void freeTestCallback(void *val) {
     zfree(val);
 }
 
-hashtableType KvstoreHashtableTestType = {
-    /* entryGetKey */ nullptr,
-    /* hashFunction */ hashTestCallback,
-    /* keyCompare */ cmpTestCallback,
-    /* validateEntry */ nullptr,
-    /* entryDestructor */ freeTestCallback,
-    /* entryPrefetchValue */ nullptr,
-    /* resizeAllowed */ nullptr,
-    /* rehashingStarted */ kvstoreHashtableRehashingStarted,
-    /* rehashingCompleted */ kvstoreHashtableRehashingCompleted,
-    /* trackMemUsage */ kvstoreHashtableTrackMemUsage,
-    /* getMetadataSize */ kvstoreHashtableMetadataSize,
-    /* instant_rehashing */ 0,
-};
-
-hashtableType KvstoreConflictHashtableTestType = {
-    /* entryGetKey */ nullptr,
-    /* hashFunction */ hashConflictTestCallback,
-    /* keyCompare */ cmpTestCallback,
-    /* validateEntry */ nullptr,
-    /* entryDestructor */ freeTestCallback,
-    /* entryPrefetchValue */ nullptr,
-    /* resizeAllowed */ nullptr,
-    /* rehashingStarted */ kvstoreHashtableRehashingStarted,
-    /* rehashingCompleted */ kvstoreHashtableRehashingCompleted,
-    /* trackMemUsage */ kvstoreHashtableTrackMemUsage,
-    /* getMetadataSize */ kvstoreHashtableMetadataSize,
-    /* instant_rehashing */ 0,
-};
+/* Hashtable types used for tests - initialized in SetUpTestSuite */
+static hashtableType KvstoreHashtableTestType;
+static hashtableType KvstoreConflictHashtableTestType;
 
 char *stringFromInt(int value) {
     char buf[32];
@@ -63,13 +37,36 @@ char *stringFromInt(int value) {
     char *s;
 
     len = snprintf(buf, sizeof(buf), "%d", value);
-    s = (char *)(zmalloc(len + 1));
+    s = (char *)zmalloc(len + 1);
     memcpy(s, buf, len);
     s[len] = '\0';
     return s;
 }
 
 class KvstoreTest : public ::testing::Test {
+  protected:
+    static void SetUpTestSuite() {
+        /* Initialize KvstoreHashtableTestType explicitly by field name to avoid
+         * dependency on field order (designated initializers require C++20). */
+        memset(&KvstoreHashtableTestType, 0, sizeof(KvstoreHashtableTestType));
+        KvstoreHashtableTestType.hashFunction = hashTestCallback;
+        KvstoreHashtableTestType.keyCompare = cmpTestCallback;
+        KvstoreHashtableTestType.entryDestructor = freeTestCallback;
+        KvstoreHashtableTestType.rehashingStarted = kvstoreHashtableRehashingStarted;
+        KvstoreHashtableTestType.rehashingCompleted = kvstoreHashtableRehashingCompleted;
+        KvstoreHashtableTestType.trackMemUsage = kvstoreHashtableTrackMemUsage;
+        KvstoreHashtableTestType.getMetadataSize = kvstoreHashtableMetadataSize;
+
+        /* Initialize KvstoreConflictHashtableTestType */
+        memset(&KvstoreConflictHashtableTestType, 0, sizeof(KvstoreConflictHashtableTestType));
+        KvstoreConflictHashtableTestType.hashFunction = hashConflictTestCallback;
+        KvstoreConflictHashtableTestType.keyCompare = cmpTestCallback;
+        KvstoreConflictHashtableTestType.entryDestructor = freeTestCallback;
+        KvstoreConflictHashtableTestType.rehashingStarted = kvstoreHashtableRehashingStarted;
+        KvstoreConflictHashtableTestType.rehashingCompleted = kvstoreHashtableRehashingCompleted;
+        KvstoreConflictHashtableTestType.trackMemUsage = kvstoreHashtableTrackMemUsage;
+        KvstoreConflictHashtableTestType.getMetadataSize = kvstoreHashtableMetadataSize;
+    }
 };
 
 TEST_F(KvstoreTest, kvstoreAdd16Keys) {

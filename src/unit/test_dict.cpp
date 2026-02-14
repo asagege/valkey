@@ -19,13 +19,13 @@ long long testOnlyTimeInMilliseconds(void);
 }
 
 uint64_t hashCallback(const void *key) {
-    return dictGenHashFunction((const unsigned char *)(key), strlen((const char *)(key)));
+    return dictGenHashFunction((const unsigned char *)key, strlen((const char *)key));
 }
 
 int compareCallback(const void *key1, const void *key2) {
     int l1, l2;
-    l1 = strlen((const char *)(key1));
-    l2 = strlen((const char *)(key2));
+    l1 = strlen((const char *)key1);
+    l2 = strlen((const char *)key2);
     if (l1 != l2) return 0;
     return memcmp(key1, key2, l1) == 0;
 }
@@ -40,7 +40,7 @@ char *stringFromLongLong(long long value) {
     char *s;
 
     len = snprintf(buf, sizeof(buf), "%lld", value);
-    s = (char *)(zmalloc(len + 1));
+    s = (char *)zmalloc(len + 1);
     memcpy(s, buf, len);
     s[len] = '\0';
     return s;
@@ -77,7 +77,7 @@ TEST_F(DictTest, dictAdd16Keys) {
     /* Add 16 keys and verify dict resize is ok */
     dictSetResizeEnabled(DICT_RESIZE_ENABLE);
     for (j = 0; j < 16; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
@@ -87,11 +87,9 @@ TEST_F(DictTest, dictAdd16Keys) {
 
 TEST_F(DictTest, dictDisableResize) {
     /* Use DICT_RESIZE_AVOID to disable the dict resize and pad to (dict_force_resize_ratio * 16) */
-
-    /* First add 16 keys */
     dictSetResizeEnabled(DICT_RESIZE_ENABLE);
     for (j = 0; j < 16; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
@@ -100,8 +98,8 @@ TEST_F(DictTest, dictDisableResize) {
      * the number of keys to (dict_force_resize_ratio * 16), so we can satisfy
      * dict_force_resize_ratio in next test. */
     dictSetResizeEnabled(DICT_RESIZE_AVOID);
-    for (j = 16; j < (long)(testOnlyDictGetForceResizeRatio() * 16); j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+    for (j = 16; j < (long)testOnlyDictGetForceResizeRatio() * 16; j++) {
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     current_dict_used = testOnlyDictGetForceResizeRatio() * 16;
@@ -111,23 +109,21 @@ TEST_F(DictTest, dictDisableResize) {
 
 TEST_F(DictTest, dictAddOneKeyTriggerResize) {
     /* Add one more key, trigger the dict resize */
-
-    /* Setup: Add keys up to dict_force_resize_ratio * 16 */
     dictSetResizeEnabled(DICT_RESIZE_ENABLE);
     for (j = 0; j < 16; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
 
     dictSetResizeEnabled(DICT_RESIZE_AVOID);
-    for (j = 16; j < (long)(testOnlyDictGetForceResizeRatio() * 16); j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+    for (j = 16; j < (long)testOnlyDictGetForceResizeRatio() * 16; j++) {
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     current_dict_used = testOnlyDictGetForceResizeRatio() * 16;
 
-    retval = dictAdd(_dict, stringFromLongLong(current_dict_used), (void *)(current_dict_used));
+    retval = dictAdd(_dict, stringFromLongLong(current_dict_used), (void *)current_dict_used);
     ASSERT_EQ(retval, DICT_OK);
     current_dict_used++;
     new_dict_size = 1UL << testOnlyDictNextExp(current_dict_used);
@@ -146,22 +142,21 @@ TEST_F(DictTest, dictAddOneKeyTriggerResize) {
 TEST_F(DictTest, dictDeleteKeys) {
     /* Delete keys until we can trigger shrink in next test */
 
-    /* Setup: Add keys and trigger resize */
     dictSetResizeEnabled(DICT_RESIZE_ENABLE);
     for (j = 0; j < 16; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
 
     dictSetResizeEnabled(DICT_RESIZE_AVOID);
-    for (j = 16; j < (long)(testOnlyDictGetForceResizeRatio() * 16); j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+    for (j = 16; j < (long)testOnlyDictGetForceResizeRatio() * 16; j++) {
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     current_dict_used = testOnlyDictGetForceResizeRatio() * 16;
 
-    retval = dictAdd(_dict, stringFromLongLong(current_dict_used), (void *)(current_dict_used));
+    retval = dictAdd(_dict, stringFromLongLong(current_dict_used), (void *)current_dict_used);
     ASSERT_EQ(retval, DICT_OK);
     current_dict_used++;
     new_dict_size = 1UL << testOnlyDictNextExp(current_dict_used);
@@ -170,7 +165,7 @@ TEST_F(DictTest, dictDeleteKeys) {
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
 
     /* Delete keys until we can satisfy (1 / HASHTABLE_MIN_FILL) in the next test. */
-    for (j = new_dict_size / HASHTABLE_MIN_FILL + 1; j < (long)(current_dict_used); j++) {
+    for (j = new_dict_size / HASHTABLE_MIN_FILL + 1; j < (long)current_dict_used; j++) {
         char *key = stringFromLongLong(j);
         retval = dictDelete(_dict, key);
         zfree(key);
@@ -185,22 +180,21 @@ TEST_F(DictTest, dictDeleteKeys) {
 TEST_F(DictTest, dictDeleteOneKeyTriggerResize) {
     /* Delete one more key, trigger the dict resize */
 
-    /* Setup: Add keys, trigger resize, then delete keys */
     dictSetResizeEnabled(DICT_RESIZE_ENABLE);
     for (j = 0; j < 16; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
 
     dictSetResizeEnabled(DICT_RESIZE_AVOID);
-    for (j = 16; j < (long)(testOnlyDictGetForceResizeRatio() * 16); j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+    for (j = 16; j < (long)testOnlyDictGetForceResizeRatio() * 16; j++) {
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     current_dict_used = testOnlyDictGetForceResizeRatio() * 16;
 
-    retval = dictAdd(_dict, stringFromLongLong(current_dict_used), (void *)(current_dict_used));
+    retval = dictAdd(_dict, stringFromLongLong(current_dict_used), (void *)current_dict_used);
     ASSERT_EQ(retval, DICT_OK);
     current_dict_used++;
     new_dict_size = 1UL << testOnlyDictNextExp(current_dict_used);
@@ -208,7 +202,7 @@ TEST_F(DictTest, dictDeleteOneKeyTriggerResize) {
     dictSetResizeEnabled(DICT_RESIZE_ENABLE);
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
 
-    for (j = new_dict_size / HASHTABLE_MIN_FILL + 1; j < (long)(current_dict_used); j++) {
+    for (j = new_dict_size / HASHTABLE_MIN_FILL + 1; j < (long)current_dict_used; j++) {
         char *key = stringFromLongLong(j);
         retval = dictDelete(_dict, key);
         zfree(key);
@@ -238,7 +232,7 @@ TEST_F(DictTest, dictEmptyDirAdd128Keys) {
     /* Empty the dictionary and add 128 keys */
     dictEmpty(_dict, nullptr);
     for (j = 0; j < 128; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
@@ -252,7 +246,7 @@ TEST_F(DictTest, dictDisableResizeReduceTo3) {
     /* Setup: Add 128 keys */
     dictEmpty(_dict, nullptr);
     for (j = 0; j < 128; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
@@ -279,7 +273,7 @@ TEST_F(DictTest, dictDeleteOneKeyTriggerResizeAgain) {
     dictEmpty(_dict, nullptr);
     dictSetResizeEnabled(DICT_RESIZE_ENABLE); /* Reset resize mode before adding keys */
     for (j = 0; j < 128; j++) {
-        retval = dictAdd(_dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(_dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     while (dictIsRehashing(_dict)) dictRehashMicroseconds(_dict, 1000);
@@ -332,11 +326,11 @@ TEST_F(DictTest, DISABLED_dictBenchmark) {
 
     start_benchmark();
     for (j = 0; j < count; j++) {
-        retval = dictAdd(dict, stringFromLongLong(j), (void *)(j));
+        retval = dictAdd(dict, stringFromLongLong(j), (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     end_benchmark("Inserting");
-    ASSERT_EQ((long)(dictSize(dict)), count);
+    ASSERT_EQ((long)dictSize(dict), count);
 
     /* Wait for rehashing. */
     while (dictIsRehashing(dict)) {
@@ -393,7 +387,7 @@ TEST_F(DictTest, DISABLED_dictBenchmark) {
         retval = dictDelete(dict, key);
         ASSERT_EQ(retval, DICT_OK);
         key[0] += 17; /* Change first number to letter. */
-        retval = dictAdd(dict, key, (void *)(j));
+        retval = dictAdd(dict, key, (void *)j);
         ASSERT_EQ(retval, DICT_OK);
     }
     end_benchmark("Removing and adding");

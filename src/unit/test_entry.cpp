@@ -189,7 +189,7 @@ TEST_F(EntryTest, entryUpdate) {
     verify_entry_properties(e11, field, value_copy11, expiry11, true, false);
     ASSERT_GE(entryMemUsage(e11), current_embedded_allocation_size * 3 / 4);
     ASSERT_LE(entryMemUsage(e11), current_embedded_allocation_size);
-    ASSERT_LE(entryMemUsage(e11), (size_t)(EMBED_VALUE_MAX_ALLOC_SIZE));
+    ASSERT_LE(entryMemUsage(e11), (size_t)EMBED_VALUE_MAX_ALLOC_SIZE);
     ASSERT_EQ(e10, e11);
 
     // Update the value so that memory usage is exactly equal to the current allocation size
@@ -201,7 +201,7 @@ TEST_F(EntryTest, entryUpdate) {
     entry *e12 = entryUpdate(e11, value12, expiry12);
     verify_entry_properties(e11, field, value_copy12, expiry12, true, false);
     ASSERT_EQ(entryMemUsage(e12), current_embedded_allocation_size);
-    ASSERT_LE(entryMemUsage(e12), (size_t)(EMBED_VALUE_MAX_ALLOC_SIZE));
+    ASSERT_LE(entryMemUsage(e12), (size_t)EMBED_VALUE_MAX_ALLOC_SIZE);
     ASSERT_EQ(e12, e11);
 
     entryFree(e12);
@@ -366,7 +366,7 @@ TEST_F(EntryTest, entryMemUsage_entrySetExpiry_entryUpdate) {
     entry *e2 = entrySetExpiry(e1, expiry2);
     size_t e2_entryMemUsage = entryMemUsage(e2);
     verify_entry_properties(e2, field1, value_copy1, expiry2, true, false);
-    ASSERT_EQ(zmalloc_usable_size((char *)(e2) - sizeof(long long) - 3), e2_entryMemUsage);
+    ASSERT_EQ(zmalloc_usable_size((char *)e2 - sizeof(long long) - 3), e2_entryMemUsage);
 
     // Update expiry on an entry that already has one
     // This should NOT change memory usage as we're just updating the expiry value (long long)
@@ -383,7 +383,7 @@ TEST_F(EntryTest, entryMemUsage_entrySetExpiry_entryUpdate) {
     entry *e4 = entryUpdate(e3, value4, entryGetExpiry(e3));
     size_t e4_entryMemUsage = entryMemUsage(e4);
     verify_entry_properties(e4, field1, value_copy4, expiry3, true, false);
-    ASSERT_EQ(zmalloc_usable_size((char *)(e4) - sizeof(long long) - 3), e4_entryMemUsage);
+    ASSERT_EQ(zmalloc_usable_size((char *)e4 - sizeof(long long) - 3), e4_entryMemUsage);
 
     // Update to bigger value (keeping embedded)
     // Memory usage should increase by the difference in value size (1 byte)
@@ -392,7 +392,7 @@ TEST_F(EntryTest, entryMemUsage_entrySetExpiry_entryUpdate) {
     entry *e5 = entryUpdate(e4, value5, entryGetExpiry(e4));
     size_t e5_entryMemUsage = entryMemUsage(e5);
     verify_entry_properties(e5, field1, value_copy5, expiry3, true, false);
-    ASSERT_EQ(zmalloc_usable_size((char *)(e5) - sizeof(long long) - 3), e5_entryMemUsage);
+    ASSERT_EQ(zmalloc_usable_size((char *)e5 - sizeof(long long) - 3), e5_entryMemUsage);
 
     // Tests with non-embedded entry
     // Non-embedded entry without expiry
@@ -412,7 +412,7 @@ TEST_F(EntryTest, entryMemUsage_entrySetExpiry_entryUpdate) {
     entry *e7 = entrySetExpiry(e6, expiry7);
     size_t e7_entryMemUsage = entryMemUsage(e7);
     verify_entry_properties(e7, field6, value_copy6, expiry7, true, true);
-    size_t expected_e7_entry_mem = zmalloc_usable_size((char *)(e7) - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value6);
+    size_t expected_e7_entry_mem = zmalloc_usable_size((char *)e7 - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value6);
     ASSERT_EQ(expected_e7_entry_mem, e7_entryMemUsage);
 
     // Update expiry on a non-embedded entry that already has one
@@ -430,7 +430,7 @@ TEST_F(EntryTest, entryMemUsage_entrySetExpiry_entryUpdate) {
     entry *e9 = entryUpdate(e8, value9, entryGetExpiry(e8));
     size_t e9_entryMemUsage = entryMemUsage(e9);
     verify_entry_properties(e9, field6, value_copy9, expiry8, true, true);
-    size_t expected_e9_entry_mem = zmalloc_usable_size((char *)(e9) - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value9);
+    size_t expected_e9_entry_mem = zmalloc_usable_size((char *)e9 - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value9);
     ASSERT_EQ(expected_e9_entry_mem, e9_entryMemUsage);
 
     // Update to bigger value (keeping non-embedded)
@@ -439,7 +439,7 @@ TEST_F(EntryTest, entryMemUsage_entrySetExpiry_entryUpdate) {
     sds value_copy10 = sdsdup(value10);
     entry *e10 = entryUpdate(e9, value10, entryGetExpiry(e9));
     size_t e10_entryMemUsage = entryMemUsage(e10);
-    size_t expected_10_entry_mem = zmalloc_usable_size((char *)(e10) - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value10);
+    size_t expected_10_entry_mem = zmalloc_usable_size((char *)e10 - sizeof(long long) - sizeof(sds) - 3) + sdsAllocSize(value10);
     ASSERT_EQ(expected_10_entry_mem, e10_entryMemUsage);
 
     entryFree(e5);

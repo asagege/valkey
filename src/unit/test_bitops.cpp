@@ -39,7 +39,7 @@ static long long bitcount(void *s, long count) {
 
 static void test_case(const char *msg, int size) {
     size_t bufsize = size > 0 ? size : 1;
-    uint8_t *buf = (uint8_t *)(malloc(bufsize));
+    uint8_t *buf = (uint8_t *)malloc(bufsize);
     ASSERT_NE(buf, nullptr) << msg;
 
     int fuzzing = 1000;

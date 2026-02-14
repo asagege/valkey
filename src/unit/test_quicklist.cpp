@@ -114,7 +114,7 @@ static int _itrprintr(quicklist *ql, int print, int forward) {
         if (print) {
             int size = (entry.sz > (1 << 20)) ? 1 << 20 : entry.sz;
             printf("[%3d (%2d)]: [%.*s] (%lld)\n", i, p, size,
-                   (char *)(entry.value), entry.longval);
+                   (char *)entry.value, entry.longval);
         }
         i++;
     }
@@ -184,7 +184,7 @@ static int _ql_verify(quicklist *ql, uint32_t len, uint32_t count, uint32_t head
     }
 
     int loopr = itrprintr(ql, 0);
-    if (loopr != (int)(ql->count)) {
+    if (loopr != (int)ql->count) {
         printf("quicklist cached count not match actual count: expected %lu, got "
                "%d",
                ql->count, loopr);
@@ -569,7 +569,7 @@ TEST_F(QuicklistTest, quicklistPop1StringFrom1) {
         ql_info(ql);
         ASSERT_TRUE(quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv));
         ASSERT_NE(data, nullptr);
-        ASSERT_EQ(strcmp(populate, (char *)(data)), 0);
+        ASSERT_EQ(strcmp(populate, (char *)data), 0);
         zfree(data);
         ql_verify(ql, 0, 0, 0, 0);
         quicklistRelease(ql);
@@ -612,7 +612,7 @@ TEST_F(QuicklistTest, quicklistPopHead500From500) {
             long long lv;
             int ret = quicklistPop(ql, QUICKLIST_HEAD, &data, &sz, &lv);
             ASSERT_TRUE(ret);
-            ASSERT_EQ(strcmp(genstr("hello", 499 - i), (char *)(data)), 0);
+            ASSERT_EQ(strcmp(genstr("hello", 499 - i), (char *)data), 0);
             zfree(data);
         }
         ql_verify(ql, 0, 0, 0, 0);
@@ -638,7 +638,7 @@ TEST_F(QuicklistTest, quicklistPopHead5000From500) {
                 ASSERT_TRUE(ret);
                 ASSERT_NE(data, nullptr);
                 ASSERT_EQ(sz, 32u);
-                ASSERT_EQ(strcmp(genstr("hello", 499 - i), (char *)(data)), 0);
+                ASSERT_EQ(strcmp(genstr("hello", 499 - i), (char *)data), 0);
                 zfree(data);
             } else {
                 ASSERT_FALSE(ret);
@@ -663,7 +663,7 @@ TEST_F(QuicklistTest, quicklistIterateForwardOver500List) {
         quicklistEntry entry;
         int i = 0, count = 0;
         while (quicklistNext(iter, &entry)) {
-            ASSERT_EQ(strcmp(genstr("hello", i), (char *)(entry.value)), 0);
+            ASSERT_EQ(strcmp(genstr("hello", i), (char *)entry.value), 0);
             i++;
             count++;
         }
@@ -689,7 +689,7 @@ TEST_F(QuicklistTest, quicklistIterateReverseOver500List) {
         quicklistEntry entry;
         int i = 0;
         while (quicklistNext(iter, &entry)) {
-            ASSERT_EQ(strcmp(genstr("hello", i), (char *)(entry.value)), 0);
+            ASSERT_EQ(strcmp(genstr("hello", i), (char *)entry.value), 0);
             i++;
         }
         if (i != 500)
@@ -716,11 +716,11 @@ TEST_F(QuicklistTest, quicklistInsertAfter1Element) {
 
         /* verify results */
         iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-        ASSERT_EQ(strncmp((char *)(entry.value), "hello", 5), 0);
+        ASSERT_EQ(strncmp((char *)entry.value, "hello", 5), 0);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-        ASSERT_EQ(strncmp((char *)(entry.value), "abc", 3), 0);
+        ASSERT_EQ(strncmp((char *)entry.value, "abc", 3), 0);
         ql_release_iterator(iter);
         quicklistRelease(ql);
         long long stop = mstime();
@@ -742,11 +742,11 @@ TEST_F(QuicklistTest, quicklistInsertBefore1Element) {
 
         /* verify results */
         iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-        ASSERT_EQ(strncmp((char *)(entry.value), "abc", 3), 0);
+        ASSERT_EQ(strncmp((char *)entry.value, "abc", 3), 0);
         ql_release_iterator(iter);
 
         iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-        ASSERT_EQ(strncmp((char *)(entry.value), "hello", 5), 0);
+        ASSERT_EQ(strncmp((char *)entry.value, "hello", 5), 0);
         ql_release_iterator(iter);
         quicklistRelease(ql);
         long long stop = mstime();
@@ -812,7 +812,7 @@ TEST_F(QuicklistTest, quicklistInsertOnceInElementsWhileIteratingAtCompress) {
             quicklistIter *iter = quicklistGetIterator(ql, AL_START_HEAD);
             quicklistEntry entry;
             while (quicklistNext(iter, &entry)) {
-                if (!strncmp((char *)(entry.value), "bob", 3)) {
+                if (!strncmp((char *)entry.value, "bob", 3)) {
                     quicklistInsertBefore(iter, &entry, (char *)("bar"), 3);
                     break;
                 }
@@ -822,27 +822,27 @@ TEST_F(QuicklistTest, quicklistInsertOnceInElementsWhileIteratingAtCompress) {
 
             /* verify results */
             iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-            ASSERT_EQ(strncmp((char *)(entry.value), "abc", 3), 0);
+            ASSERT_EQ(strncmp((char *)entry.value, "abc", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-            ASSERT_EQ(strncmp((char *)(entry.value), "def", 3), 0);
+            ASSERT_EQ(strncmp((char *)entry.value, "def", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 2, &entry);
-            ASSERT_EQ(strncmp((char *)(entry.value), "bar", 3), 0);
+            ASSERT_EQ(strncmp((char *)entry.value, "bar", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 3, &entry);
-            ASSERT_EQ(strncmp((char *)(entry.value), "bob", 3), 0);
+            ASSERT_EQ(strncmp((char *)entry.value, "bob", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 4, &entry);
-            ASSERT_EQ(strncmp((char *)(entry.value), "foo", 3), 0);
+            ASSERT_EQ(strncmp((char *)entry.value, "foo", 3), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 5, &entry);
-            ASSERT_EQ(strncmp((char *)(entry.value), "zoo", 3), 0);
+            ASSERT_EQ(strncmp((char *)entry.value, "zoo", 3), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
@@ -958,11 +958,11 @@ TEST_F(QuicklistTest, quicklistIndex1200From500ListAtFill) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-            ASSERT_EQ(strcmp((char *)(entry.value), "hello2"), 0);
+            ASSERT_EQ(strcmp((char *)entry.value, "hello2"), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 200, &entry);
-            ASSERT_EQ(strcmp((char *)(entry.value), "hello201"), 0);
+            ASSERT_EQ(strcmp((char *)entry.value, "hello201"), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
@@ -981,11 +981,11 @@ TEST_F(QuicklistTest, quicklistIndex12From500ListAtFill) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
-            ASSERT_EQ(strcmp((char *)(entry.value), "hello500"), 0);
+            ASSERT_EQ(strcmp((char *)entry.value, "hello500"), 0);
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -2, &entry);
-            ASSERT_EQ(strcmp((char *)(entry.value), "hello499"), 0);
+            ASSERT_EQ(strcmp((char *)entry.value, "hello499"), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
@@ -1004,7 +1004,7 @@ TEST_F(QuicklistTest, quicklistIndex100From500ListAtFill) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, -100, &entry);
-            ASSERT_EQ(strcmp((char *)(entry.value), "hello401"), 0);
+            ASSERT_EQ(strcmp((char *)entry.value, "hello401"), 0);
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
@@ -1257,7 +1257,7 @@ TEST_F(QuicklistTest, quicklistNumbersLargerListRead) {
             ql_release_iterator(iter);
         }
         quicklistIter *iter = quicklistGetIteratorEntryAtIdx(ql, 5000, &entry);
-        ASSERT_EQ(strncmp((char *)(entry.value), "xxxxxxxxxxxxxxxxxxxx", 20), 0);
+        ASSERT_EQ(strncmp((char *)entry.value, "xxxxxxxxxxxxxxxxxxxx", 20), 0);
         ql_verify(ql, 157, 5001, 32, 9);
         ql_release_iterator(iter);
         quicklistRelease(ql);
@@ -1321,10 +1321,10 @@ TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
             i = 0;
             while (quicklistNext(iter, &entry)) {
                 /* Result must be: abc, foo, foobar, foobared, zap, test, foo */
-                int sz = entry.sz;
-                if (strncmp((char *)(entry.value), result[i], entry.sz)) {
-                    FAIL() << "No match at position " << i << ", got " << std::string((char *)(entry.value), sz)
-                           << " instead of " << result[i];
+                if (strncmp((char *)entry.value, result[i], entry.sz)) {
+                    char got[64] = {0};
+                    memcpy(got, entry.value, entry.sz < 63 ? entry.sz : 63);
+                    FAIL() << "No match at position " << i << ", got '" << got << "' instead of " << result[i];
                 }
                 i++;
             }
@@ -1351,10 +1351,10 @@ TEST_F(QuicklistTest, quicklistLremTestAtCompress) {
             i = 0;
             size_t resB = sizeof(resultB) / sizeof(*resultB);
             while (quicklistNext(iter, &entry)) {
-                int sz = entry.sz;
-                if (strncmp((char *)(entry.value), resultB[resB - 1 - i], sz)) {
-                    FAIL() << "No match at position " << i << ", got " << std::string((char *)(entry.value), sz)
-                           << " instead of " << resultB[resB - 1 - i];
+                if (strncmp((char *)entry.value, resultB[resB - 1 - i], entry.sz)) {
+                    char got[64] = {0};
+                    memcpy(got, entry.value, entry.sz < 63 ? entry.sz : 63);
+                    FAIL() << "No match at position " << i << ", got '" << got << "' instead of " << resultB[resB - 1 - i];
                 }
                 i++;
             }
@@ -1403,7 +1403,7 @@ TEST_F(QuicklistTest, quicklistIterateReverseDeleteAtCompress) {
             char *vals[] = {(char *)("abc"), (char *)("def"), (char *)("jkl"),
                             (char *)("oop")};
             while (quicklistNext(iter, &entry)) {
-                if (!quicklistCompare(&entry, (unsigned char *)(vals[i]), 3)) {
+                if (!quicklistCompare(&entry, (unsigned char *)vals[i], 3)) {
                     FAIL() << "Value at " << i << " didn't match " << vals[i];
                 }
                 i++;
@@ -1527,10 +1527,10 @@ TEST_F(QuicklistTest, quicklistLtrimTestBAtCompress) {
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
-            int sz = entry.sz;
-            if (strncmp((char *)(entry.value), "bobobob", 7)) {
-                FAIL() << "Tail doesn't match bobobob, it's " << std::string((char *)(entry.value), sz)
-                       << " instead";
+            if (strncmp((char *)entry.value, "bobobob", 7)) {
+                char got[64] = {0};
+                memcpy(got, entry.value, entry.sz < 63 ? entry.sz : 63);
+                FAIL() << "Tail doesn't match bobobob, it's '" << got << "' instead";
             }
             ql_release_iterator(iter);
 
@@ -1746,8 +1746,8 @@ TEST_F(QuicklistTest, quicklistCompressAndDecompressQuicklistListpackNode) {
         long long start = mstime();
         ASSERT_TRUE(testOnlyQuicklistCompressNode(node));
         ASSERT_TRUE(testOnlyQuicklistDecompressNode(node));
-        std::cout << "Compress and decompress: " << node->sz / 1024 / 1024 << " MB in "
-                  << (float)(mstime() - start) / 1000 << " seconds." << std::endl;
+        printf("Compress and decompress: %zu MB in %.3f seconds.\n",
+               node->sz / 1024 / 1024, (double)(mstime() - start) / 1000);
     }
 
     zfree(s);
@@ -1778,8 +1778,8 @@ TEST_F(QuicklistTest, quicklistCompressAndDecomressQuicklistPlainNodeLargeThanUI
     long long start = mstime();
     ASSERT_TRUE(testOnlyQuicklistCompressNode(node));
     ASSERT_TRUE(testOnlyQuicklistDecompressNode(node));
-    std::cout << "Compress and decompress: " << node->sz / 1024 / 1024 << " MB in "
-              << (float)(mstime() - start) / 1000 << " seconds." << std::endl;
+    printf("Compress and decompress: %zu MB in %.3f seconds.\n",
+           node->sz / 1024 / 1024, (double)(mstime() - start) / 1000);
 
     ASSERT_EQ(memcmp(node->entry, "helloworld", 10), 0);
     ASSERT_EQ(memcmp(node->entry + sz - 10, "1234567890", 10), 0);

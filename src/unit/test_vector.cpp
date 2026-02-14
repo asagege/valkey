@@ -34,13 +34,13 @@ TEST_F(VectorTest, TestVector) {
     vectorInit(&struct_vector, 128, sizeof(test_struct));
 
     for (uint64_t i = 0; i < 128; i++) {
-        uint8_t *uint8_item = (uint8_t *)(vectorPush(&uint8_vector));
+        uint8_t *uint8_item = (uint8_t *)vectorPush(&uint8_vector);
         *uint8_item = i;
 
-        uint64_t *uint64_item = (uint64_t *)(vectorPush(&uint64_vector));
+        uint64_t *uint64_item = (uint64_t *)vectorPush(&uint64_vector);
         *uint64_item = i * 1000;
 
-        test_struct *struct_item = (test_struct *)(vectorPush(&struct_vector));
+        test_struct *struct_item = (test_struct *)vectorPush(&struct_vector);
         struct_item->uint8 = i;
         struct_item->uint64 = i * 1000;
     }

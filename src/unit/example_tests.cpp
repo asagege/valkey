@@ -29,7 +29,7 @@ using ExampleDeathTest = ExampleTest;
 TEST_F(ExampleDeathTest, TestSimpleDeath) {
     EXPECT_DEATH(
         {
-            *((volatile char *)(0)) = 'x'; // SEGV
+            *((volatile char *)0) = 'x'; // SEGV
         },
         "");
 }

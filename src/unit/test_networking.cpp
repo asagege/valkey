@@ -89,7 +89,7 @@ typedef struct fakeConnection {
 
 /* Fake connWrite function */
 static int fake_connWrite(connection *conn, const void *data, size_t size) {
-    fakeConnection *fake_conn = (fakeConnection *)(conn);
+    fakeConnection *fake_conn = (fakeConnection *)conn;
     if (fake_conn->error) return -1;
 
     size_t to_write = size;
@@ -99,12 +99,12 @@ static int fake_connWrite(connection *conn, const void *data, size_t size) {
 
     memcpy(fake_conn->buffer + fake_conn->written, data, to_write);
     fake_conn->written += to_write;
-    return (int)(to_write);
+    return (int)to_write;
 }
 
 /* Fake connWritev function */
 static int fake_connWritev(connection *conn, const struct iovec *iov, int iovcnt) {
-    fakeConnection *fake_conn = (fakeConnection *)(conn);
+    fakeConnection *fake_conn = (fakeConnection *)conn;
     if (fake_conn->error) return -1;
 
     size_t total = 0;
@@ -119,45 +119,11 @@ static int fake_connWritev(connection *conn, const struct iovec *iov, int iovcnt
         fake_conn->written += to_write;
         total += to_write;
     }
-    return (int)(total);
+    return (int)total;
 }
 
-/* Fake connection type */
-static ConnectionType CT_Fake = {
-    /* .get_type = */ nullptr,
-    /* .init = */ nullptr,
-    /* .cleanup = */ nullptr,
-    /* .configure = */ nullptr,
-    /* .ae_handler = */ nullptr,
-    /* .accept_handler = */ nullptr,
-    /* .addr = */ nullptr,
-    /* .is_local = */ nullptr,
-    /* .listen = */ nullptr,
-    /* .closeListener = */ nullptr,
-    /* .conn_create = */ nullptr,
-    /* .conn_create_accepted = */ nullptr,
-    /* .shutdown = */ nullptr,
-    /* .close = */ nullptr,
-    /* .connect = */ nullptr,
-    /* .blocking_connect = */ nullptr,
-    /* .accept = */ nullptr,
-    /* .write = */ fake_connWrite,
-    /* .writev = */ fake_connWritev,
-    /* .read = */ nullptr,
-    /* .set_write_handler = */ nullptr,
-    /* .set_read_handler = */ nullptr,
-    /* .get_last_error = */ nullptr,
-    /* .sync_write = */ nullptr,
-    /* .sync_read = */ nullptr,
-    /* .sync_readline = */ nullptr,
-    /* .has_pending_data = */ nullptr,
-    /* .process_pending_data = */ nullptr,
-    /* .postpone_update_state = */ nullptr,
-    /* .update_state = */ nullptr,
-    /* .get_peer_cert = */ nullptr,
-    /* .get_peer_username = */ nullptr,
-    /* .connIntegrityChecked = */ nullptr,
-};
+/* Fake connection type - initialized in SetUpTestSuite */
+static ConnectionType CT_Fake;
 
 static fakeConnection *connCreateFake(void) {
     fakeConnection *conn = (fakeConnection *)(zcalloc(sizeof(fakeConnection)));
@@ -170,6 +136,14 @@ static fakeConnection *connCreateFake(void) {
 /* Test fixture for networking tests - minimal fixture with no setup/teardown */
 class NetworkingTest : public ::testing::Test {
   protected:
+    static void SetUpTestSuite() {
+        /* Initialize CT_Fake explicitly by field name to avoid dependency
+         * on field order (designated initializers require C++20). */
+        memset(&CT_Fake, 0, sizeof(CT_Fake));
+        CT_Fake.write = fake_connWrite;
+        CT_Fake.writev = fake_connWritev;
+    }
+
     void SetUp() override {
         /* Initialize server fields that are accessed by networking functions */
         server.commandlog[COMMANDLOG_TYPE_LARGE_REPLY].threshold = -1; /* Disable tracking */
@@ -190,9 +164,9 @@ TEST_F(NetworkingTest, TestWriteToReplica) {
     /* Test 1: Single block write */
     {
         fakeConnection *fake_conn = connCreateFake();
-        fake_conn->buffer = (char *)(zmalloc(1024));
+        fake_conn->buffer = (char *)zmalloc(1024);
         fake_conn->buf_size = 1024;
-        c->conn = (connection *)(fake_conn);
+        c->conn = (connection *)fake_conn;
 
         /* Create replication buffer block */
         replBufBlock *block = (replBufBlock *)(zmalloc(sizeof(replBufBlock) + 128));
@@ -226,9 +200,9 @@ TEST_F(NetworkingTest, TestWriteToReplica) {
         fakeConnection *fake_conn = connCreateFake();
         fake_conn->error = 0;
         fake_conn->written = 0;
-        fake_conn->buffer = (char *)(zmalloc(1024));
+        fake_conn->buffer = (char *)zmalloc(1024);
         fake_conn->buf_size = 1024;
-        c->conn = (connection *)(fake_conn);
+        c->conn = (connection *)fake_conn;
 
         /* Create multiple replication buffer blocks */
         replBufBlock *block1 = (replBufBlock *)(zmalloc(sizeof(replBufBlock) + 128));
@@ -269,10 +243,10 @@ TEST_F(NetworkingTest, TestWriteToReplica) {
     {
         fakeConnection *fake_conn = connCreateFake();
         fake_conn->error = 1; /* Simulate write error */
-        fake_conn->buffer = (char *)(zmalloc(1024));
+        fake_conn->buffer = (char *)zmalloc(1024);
         fake_conn->buf_size = 1024;
         fake_conn->written = 0;
-        c->conn = (connection *)(fake_conn);
+        c->conn = (connection *)fake_conn;
 
         /* Create replication buffer block */
         replBufBlock *block = (replBufBlock *)(zmalloc(sizeof(replBufBlock) + 128));
@@ -550,12 +524,12 @@ TEST_F(NetworkingTest, TestRewriteClientCommandArgument) {
 static client *createTestClient(void) {
     client *c = (client *)(zcalloc(sizeof(client)));
 
-    c->buf = (char *)(zmalloc_usable(PROTO_REPLY_CHUNK_BYTES, &c->buf_usable_size));
+    c->buf = (char *)zmalloc_usable(PROTO_REPLY_CHUNK_BYTES, &c->buf_usable_size);
     c->reply = listCreate();
     listSetFreeMethod(c->reply, freeClientReplyValue);
     listSetDupMethod(c->reply, dupClientReplyValue);
     /* dummy connection to bypass assert in closeClientOnOutputBufferLimitReached */
-    c->conn = (connection *)(c);
+    c->conn = (connection *)c;
     c->deferred_reply_bytes = ULLONG_MAX;
 
     return c;
@@ -624,7 +598,7 @@ TEST_F(NetworkingTest, TestAddRepliesWithOffloadsToBuffer) {
     payloadHeader *header3 = c->last_header;
     ASSERT_EQ(header3->payload_type, BULK_STR_REF);
 
-    memcpy(&ptr, (char *)(c->last_header) + sizeof(payloadHeader), sizeof(ptr));
+    memcpy(&ptr, (char *)c->last_header + sizeof(payloadHeader), sizeof(ptr));
     ASSERT_EQ(obj, ptr);
 
     releaseReplyReferences(c);
@@ -653,7 +627,7 @@ TEST_F(NetworkingTest, TestAddRepliesWithOffloadsToList) {
      * This will force bulk offload to be added to reply list
      */
     size_t reply_len = c->buf_usable_size - 2 * sizeof(payloadHeader) - 4;
-    char *reply = (char *)(zmalloc(reply_len));
+    char *reply = (char *)zmalloc(reply_len);
     memset(reply, 'a', reply_len);
     _addReplyToBufferOrList(c, reply, reply_len);
     ASSERT_TRUE(c->flag.buf_encoded);
@@ -740,7 +714,7 @@ TEST_F(NetworkingTest, TestAddBufferToReplyIOV) {
     testOnlyInitReplyIOV(c, iovmax, iov_arr, prefixes, crlf, &reply);
     testOnlyAddBufferToReplyIOV(c->flag.buf_encoded, c->buf, c->bufpos, &reply, &metadata[0]);
 
-    ASSERT_EQ(reply.iov_len_total, (ssize_t)(total_len));
+    ASSERT_EQ(reply.iov_len_total, (ssize_t)total_len);
     ASSERT_EQ(reply.iovcnt, 3);
     const char *ptr = expected_reply;
     for (int i = 0; i < reply.iovcnt; ++i) {
@@ -763,7 +737,7 @@ TEST_F(NetworkingTest, TestAddBufferToReplyIOV) {
     testOnlyInitReplyIOV(c, iovmax, iov_arr2, prefixes2, crlf, &reply2);
     testOnlyAddBufferToReplyIOV(c->flag.buf_encoded, c->buf, c->bufpos, &reply2, &metadata2[0]);
     ASSERT_EQ(reply2.iov_len_total, (ssize_t)(total_len - 1));
-    ASSERT_EQ((*(char *)(reply2.iov[0].iov_base)), '5');
+    ASSERT_EQ(*(char *)reply2.iov[0].iov_base, '5');
 
     /* Test 4: Last written buf/pos/data_len after 2nd invocation */
     testOnlySaveLastWrittenBuf(c, metadata2, 1, reply2.iov_len_total, 4); /* 4 more bytes has been written */
@@ -780,13 +754,13 @@ TEST_F(NetworkingTest, TestAddBufferToReplyIOV) {
     testOnlyInitReplyIOV(c, iovmax, iov_arr3, prefixes3, crlf, &reply3);
     testOnlyAddBufferToReplyIOV(c->flag.buf_encoded, c->buf, c->bufpos, &reply3, &metadata3[0]);
     ASSERT_EQ(reply3.iov_len_total, (ssize_t)(total_len - 5));
-    ASSERT_EQ((*(char *)(reply3.iov[0].iov_base)), 'e');
+    ASSERT_EQ(*(char *)reply3.iov[0].iov_base, 'e');
 
     /* Test 6: Last written buf/pos/data_len after 3rd invocation */
     testOnlySaveLastWrittenBuf(c, metadata3, 1, reply3.iov_len_total, reply3.iov_len_total); /* everything has been written */
     ASSERT_EQ(c->io_last_written.buf, c->buf);
     ASSERT_EQ(c->io_last_written.bufpos, c->bufpos);
-    ASSERT_EQ(c->io_last_written.data_len, (size_t)(total_len));
+    ASSERT_EQ(c->io_last_written.data_len, (size_t)total_len);
 
     decrRefCount(obj);
 

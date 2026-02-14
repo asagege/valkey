@@ -59,24 +59,24 @@ static unsigned char *createIntList(void) {
     char buf[32];
 
     snprintf(buf, sizeof(buf), "100");
-    zl = ziplistPush(zl, (unsigned char *)(buf), strlen(buf), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)buf, strlen(buf), ZIPLIST_TAIL);
     snprintf(buf, sizeof(buf), "128000");
-    zl = ziplistPush(zl, (unsigned char *)(buf), strlen(buf), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)buf, strlen(buf), ZIPLIST_TAIL);
     snprintf(buf, sizeof(buf), "-100");
-    zl = ziplistPush(zl, (unsigned char *)(buf), strlen(buf), ZIPLIST_HEAD);
+    zl = ziplistPush(zl, (unsigned char *)buf, strlen(buf), ZIPLIST_HEAD);
     snprintf(buf, sizeof(buf), "4294967296");
-    zl = ziplistPush(zl, (unsigned char *)(buf), strlen(buf), ZIPLIST_HEAD);
+    zl = ziplistPush(zl, (unsigned char *)buf, strlen(buf), ZIPLIST_HEAD);
     snprintf(buf, sizeof(buf), "non integer");
-    zl = ziplistPush(zl, (unsigned char *)(buf), strlen(buf), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)buf, strlen(buf), ZIPLIST_TAIL);
     snprintf(buf, sizeof(buf), "much much longer non integer");
-    zl = ziplistPush(zl, (unsigned char *)(buf), strlen(buf), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)buf, strlen(buf), ZIPLIST_TAIL);
     return zl;
 }
 
 static long long usec(void) {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
-    return ((long long)(tv.tv_sec) * 1000000) + tv.tv_usec;
+    return ((long long)tv.tv_sec * 1000000) + tv.tv_usec;
 }
 
 static void stress(int pos, int num, int maxsize, int dnum) {
@@ -152,14 +152,14 @@ static void verify(unsigned char *zl, zlentry *e) {
 }
 
 static unsigned char *insertHelper(unsigned char *zl, char ch, size_t len, unsigned char *pos) {
-    assert(len <= (size_t)(ZIP_BIG_PREVLEN));
+    assert(len <= (size_t)ZIP_BIG_PREVLEN);
     unsigned char data[ZIP_BIG_PREVLEN] = {0};
     memset(data, ch, len);
     return ziplistInsert(zl, pos, data, len);
 }
 
 static int compareHelper(unsigned char *zl, char ch, size_t len, int index) {
-    assert(len <= (size_t)(ZIP_BIG_PREVLEN));
+    assert(len <= (size_t)ZIP_BIG_PREVLEN);
     unsigned char data[ZIP_BIG_PREVLEN] = {0};
     memset(data, ch, len);
     unsigned char *p = ziplistIndex(zl, index);
@@ -449,7 +449,7 @@ TEST_F(ZiplistTest, ziplistDeleteFooWhileIterating) {
     p = ziplistIndex(zl, 0);
     while (ziplistGet(p, &entry, &elen, &value)) {
         ASSERT_NE(p, nullptr);
-        if (entry && strncmp("foo", (char *)(entry), elen) == 0) {
+        if (entry && strncmp("foo", (char *)entry, elen) == 0) {
             zl = ziplistDelete(zl, &p);
         } else {
             p = ziplistNext(zl, p);
@@ -506,16 +506,16 @@ TEST_F(ZiplistTest, ziplistRegressionTestForOver255ByteStrings) {
     memset(v1, 'x', 256);
     memset(v2, 'y', 256);
     zl = ziplistNew();
-    zl = ziplistPush(zl, (unsigned char *)(v1), strlen(v1), ZIPLIST_TAIL);
-    zl = ziplistPush(zl, (unsigned char *)(v2), strlen(v2), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)v1, strlen(v1), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)v2, strlen(v2), ZIPLIST_TAIL);
 
     /* Pop values again and compare their value. */
     p = ziplistIndex(zl, 0);
     ASSERT_TRUE(ziplistGet(p, &vstr, &vlen, &vlong));
-    ASSERT_EQ(strncmp(v1, (char *)(vstr), vlen), 0);
+    ASSERT_EQ(strncmp(v1, (char *)vstr, vlen), 0);
     p = ziplistIndex(zl, 1);
     ASSERT_TRUE(ziplistGet(p, &vstr, &vlen, &vlong));
-    ASSERT_EQ(strncmp(v2, (char *)(vstr), vlen), 0);
+    ASSERT_EQ(strncmp(v2, (char *)vstr, vlen), 0);
     zfree(zl);
 }
 
@@ -535,7 +535,7 @@ TEST_F(ZiplistTest, ziplistRegressionTestDeleteNextToLastEntries) {
 
     zl = ziplistNew();
     for (i = 0; i < (sizeof(v) / sizeof(v[0])); i++) {
-        zl = ziplistPush(zl, (unsigned char *)(v[i]), strlen(v[i]), ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)v[i], strlen(v[i]), ZIPLIST_TAIL);
     }
 
     verify(zl, e);
@@ -566,7 +566,7 @@ TEST_F(ZiplistTest, ziplistCreateLongListAndCheckIndices) {
     int i, len;
     for (i = 0; i < 1000; i++) {
         len = snprintf(buf, sizeof(buf), "%d", i);
-        zl = ziplistPush(zl, (unsigned char *)(buf), len, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, len, ZIPLIST_TAIL);
     }
     for (i = 0; i < 1000; i++) {
         p = ziplistIndex(zl, i);
@@ -670,7 +670,7 @@ TEST_F(ZiplistTest, DISABLED_ziplistStressWithRandomPayloadsOfDifferentEncoding)
             }
 
             /* Add to ziplist */
-            zl = ziplistPush(zl, (unsigned char *)(buf), buflen, where);
+            zl = ziplistPush(zl, (unsigned char *)buf, buflen, where);
 
             /* Add to reference list */
             if (where == ZIPLIST_HEAD) {
@@ -801,13 +801,13 @@ TEST_F(ZiplistTest, ziplistInsertEdgeCase) {
     /* After the rpush, the list look like: [one two A_252 A_250 three 10] */
     zl = ziplistPush(zl, (unsigned char *)("one"), 3, ZIPLIST_TAIL);
     zl = ziplistPush(zl, (unsigned char *)("two"), 3, ZIPLIST_TAIL);
-    zl = ziplistPush(zl, (unsigned char *)(A_252), strlen(A_252), ZIPLIST_TAIL);
-    zl = ziplistPush(zl, (unsigned char *)(A_250), strlen(A_250), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)A_252, strlen(A_252), ZIPLIST_TAIL);
+    zl = ziplistPush(zl, (unsigned char *)A_250, strlen(A_250), ZIPLIST_TAIL);
     zl = ziplistPush(zl, (unsigned char *)("three"), 5, ZIPLIST_TAIL);
     zl = ziplistPush(zl, (unsigned char *)("10"), 2, ZIPLIST_TAIL);
 
     p = ziplistIndex(zl, 2);
-    ASSERT_TRUE(ziplistCompare(p, (unsigned char *)(A_252), strlen(A_252)));
+    ASSERT_TRUE(ziplistCompare(p, (unsigned char *)A_252, strlen(A_252)));
 
     /* When we remove A_252, the list became: [one two A_250 three 10]
      * A_250's prev node became node two, because node two quite small
@@ -854,10 +854,10 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistFind) {
     int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 40, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 400, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4000, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 40, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 400, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4000, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("1"), 1, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("10"), 2, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("100"), 3, ZIPLIST_TAIL);
@@ -885,10 +885,10 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistIndex) {
     int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 40, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 400, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4000, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 40, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 400, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4000, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("1"), 1, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("10"), 2, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("100"), 3, ZIPLIST_TAIL);
@@ -915,10 +915,10 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistValidateIntegrity) {
     int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 40, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 400, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4000, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 40, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 400, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4000, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("1"), 1, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("10"), 2, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("100"), 3, ZIPLIST_TAIL);
@@ -944,10 +944,10 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithString) {
     int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 40, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 400, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4000, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 40, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 400, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4000, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("1"), 1, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("10"), 2, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("100"), 3, ZIPLIST_TAIL);
@@ -977,10 +977,10 @@ TEST_F(ZiplistTest, DISABLED_ziplistBenchmarkziplistCompareWithNumber) {
     int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 40, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 400, ZIPLIST_TAIL);
-        zl = ziplistPush(zl, (unsigned char *)(buf), 4000, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 40, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 400, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)buf, 4000, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("1"), 1, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("10"), 2, ZIPLIST_TAIL);
         zl = ziplistPush(zl, (unsigned char *)("100"), 3, ZIPLIST_TAIL);
@@ -1010,10 +1010,10 @@ TEST_F(ZiplistTest, DISABLED_ziplistStress__ziplistCascadeUpdate) {
     unsigned char *zl = ziplistNew();
     int iteration = accurate ? 100000 : 100;
     for (int i = 0; i < iteration; i++) {
-        zl = ziplistPush(zl, (unsigned char *)(data), ZIP_BIG_PREVLEN - 4, ZIPLIST_TAIL);
+        zl = ziplistPush(zl, (unsigned char *)data, ZIP_BIG_PREVLEN - 4, ZIPLIST_TAIL);
     }
     long long start = usec();
-    zl = ziplistPush(zl, (unsigned char *)(data), ZIP_BIG_PREVLEN - 3, ZIPLIST_HEAD);
+    zl = ziplistPush(zl, (unsigned char *)data, ZIP_BIG_PREVLEN - 3, ZIPLIST_HEAD);
     printf("Stress __ziplistCascadeUpdate: %lld usec\n", usec() - start);
 
     zfree(zl);

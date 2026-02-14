@@ -30,66 +30,64 @@ void sdsfreeVoid(void *ptr);
 /* Macros from listpack.c needed for testing */
 #define LP_HDR_SIZE 6u /* 32 bit total len + 16 bit number of elements. */
 #define LP_EOF 0xFF
-#define LP_HDR_NUMELE_UNKNOWN (uint32_t)(UINT16_MAX)
-#define LP_HDR_NUMELE_UNKNOWN_UL (unsigned long)(UINT16_MAX)
+#define LP_HDR_NUMELE_UNKNOWN (uint32_t) UINT16_MAX
+#define LP_HDR_NUMELE_UNKNOWN_UL (unsigned long)UINT16_MAX
 #define LP_ENCODING_7BIT_UINT_MASK 0x80
-#define LP_ENCODING_IS_7BIT_UINT(byte) (((byte)&LP_ENCODING_7BIT_UINT_MASK) == 0)
+#define LP_ENCODING_IS_7BIT_UINT(byte) (((byte) & LP_ENCODING_7BIT_UINT_MASK) == 0)
 #define LP_ENCODING_6BIT_STR 0x80
 #define LP_ENCODING_6BIT_STR_MASK 0xC0
-#define LP_ENCODING_IS_6BIT_STR(byte) (((byte)&LP_ENCODING_6BIT_STR_MASK) == LP_ENCODING_6BIT_STR)
+#define LP_ENCODING_IS_6BIT_STR(byte) (((byte) & LP_ENCODING_6BIT_STR_MASK) == LP_ENCODING_6BIT_STR)
 #define LP_ENCODING_13BIT_INT 0xC0
 #define LP_ENCODING_13BIT_INT_MASK 0xE0
-#define LP_ENCODING_IS_13BIT_INT(byte) (((byte)&LP_ENCODING_13BIT_INT_MASK) == LP_ENCODING_13BIT_INT)
+#define LP_ENCODING_IS_13BIT_INT(byte) (((byte) & LP_ENCODING_13BIT_INT_MASK) == LP_ENCODING_13BIT_INT)
 #define LP_ENCODING_12BIT_STR 0xE0
 #define LP_ENCODING_12BIT_STR_MASK 0xF0
-#define LP_ENCODING_IS_12BIT_STR(byte) (((byte)&LP_ENCODING_12BIT_STR_MASK) == LP_ENCODING_12BIT_STR)
+#define LP_ENCODING_IS_12BIT_STR(byte) (((byte) & LP_ENCODING_12BIT_STR_MASK) == LP_ENCODING_12BIT_STR)
 #define LP_ENCODING_16BIT_INT 0xF1
 #define LP_ENCODING_16BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_16BIT_INT(byte) (((byte)&LP_ENCODING_16BIT_INT_MASK) == LP_ENCODING_16BIT_INT)
+#define LP_ENCODING_IS_16BIT_INT(byte) (((byte) & LP_ENCODING_16BIT_INT_MASK) == LP_ENCODING_16BIT_INT)
 #define LP_ENCODING_24BIT_INT 0xF2
 #define LP_ENCODING_24BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_24BIT_INT(byte) (((byte)&LP_ENCODING_24BIT_INT_MASK) == LP_ENCODING_24BIT_INT)
+#define LP_ENCODING_IS_24BIT_INT(byte) (((byte) & LP_ENCODING_24BIT_INT_MASK) == LP_ENCODING_24BIT_INT)
 #define LP_ENCODING_32BIT_INT 0xF3
 #define LP_ENCODING_32BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_32BIT_INT(byte) (((byte)&LP_ENCODING_32BIT_INT_MASK) == LP_ENCODING_32BIT_INT)
+#define LP_ENCODING_IS_32BIT_INT(byte) (((byte) & LP_ENCODING_32BIT_INT_MASK) == LP_ENCODING_32BIT_INT)
 #define LP_ENCODING_64BIT_INT 0xF4
 #define LP_ENCODING_64BIT_INT_MASK 0xFF
-#define LP_ENCODING_IS_64BIT_INT(byte) (((byte)&LP_ENCODING_64BIT_INT_MASK) == LP_ENCODING_64BIT_INT)
+#define LP_ENCODING_IS_64BIT_INT(byte) (((byte) & LP_ENCODING_64BIT_INT_MASK) == LP_ENCODING_64BIT_INT)
 #define LP_ENCODING_32BIT_STR 0xF0
 #define LP_ENCODING_32BIT_STR_MASK 0xFF
-#define LP_ENCODING_IS_32BIT_STR(byte) (((byte)&LP_ENCODING_32BIT_STR_MASK) == LP_ENCODING_32BIT_STR)
+#define LP_ENCODING_IS_32BIT_STR(byte) (((byte) & LP_ENCODING_32BIT_STR_MASK) == LP_ENCODING_32BIT_STR)
 #define lpGetNumElements(p) (((uint32_t)((p)[4]) << 0) | ((uint32_t)((p)[5]) << 8))
 
-static char *mixlist[] = {(char *)("hello"), (char *)("foo"),
-                          (char *)("quux"), (char *)("1024")};
-static char *intlist[] = {(char *)("4294967296"), (char *)("-100"),
-                          (char *)("100"), (char *)("128000"),
-                          (char *)("non integer"), (char *)("much much longer non integer")};
+static const char *mixlist[] = {"hello", "foo", "quux", "1024"};
+static const char *intlist[] = {"4294967296", "-100", "100", "128000",
+                                "non integer", "much much longer non integer"};
 
 static unsigned char *createList(void) {
     unsigned char *lp = lpNew(0);
-    lp = lpAppend(lp, (unsigned char *)(mixlist[1]), strlen(mixlist[1]));
-    lp = lpAppend(lp, (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
-    lp = lpPrepend(lp, (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
-    lp = lpAppend(lp, (unsigned char *)(mixlist[3]), strlen(mixlist[3]));
+    lp = lpAppend(lp, (unsigned char *)mixlist[1], strlen(mixlist[1]));
+    lp = lpAppend(lp, (unsigned char *)mixlist[2], strlen(mixlist[2]));
+    lp = lpPrepend(lp, (unsigned char *)mixlist[0], strlen(mixlist[0]));
+    lp = lpAppend(lp, (unsigned char *)mixlist[3], strlen(mixlist[3]));
     return lp;
 }
 
 static unsigned char *createIntList(void) {
     unsigned char *lp = lpNew(0);
-    lp = lpAppend(lp, (unsigned char *)(intlist[2]), strlen(intlist[2]));
-    lp = lpAppend(lp, (unsigned char *)(intlist[3]), strlen(intlist[3]));
-    lp = lpPrepend(lp, (unsigned char *)(intlist[1]), strlen(intlist[1]));
-    lp = lpPrepend(lp, (unsigned char *)(intlist[0]), strlen(intlist[0]));
-    lp = lpAppend(lp, (unsigned char *)(intlist[4]), strlen(intlist[4]));
-    lp = lpAppend(lp, (unsigned char *)(intlist[5]), strlen(intlist[5]));
+    lp = lpAppend(lp, (unsigned char *)intlist[2], strlen(intlist[2]));
+    lp = lpAppend(lp, (unsigned char *)intlist[3], strlen(intlist[3]));
+    lp = lpPrepend(lp, (unsigned char *)intlist[1], strlen(intlist[1]));
+    lp = lpPrepend(lp, (unsigned char *)intlist[0], strlen(intlist[0]));
+    lp = lpAppend(lp, (unsigned char *)intlist[4], strlen(intlist[4]));
+    lp = lpAppend(lp, (unsigned char *)intlist[5], strlen(intlist[5]));
     return lp;
 }
 
 static long long usec(void) {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
-    return ((long long)(tv.tv_sec) * 1000000) + tv.tv_usec;
+    return ((long long)tv.tv_sec * 1000000) + tv.tv_usec;
 }
 
 static void stress(int pos, int num, int maxsize, int dnum) {
@@ -127,11 +125,11 @@ static unsigned char *pop(unsigned char *lp, int where, void *expected) {
     vstr = lpGet(p, &vlen, nullptr);
 
     if (vstr) {
-        size_t expected_len = strlen((const char *)(expected));
-        assert(vlen == (int64_t)(expected_len));
+        size_t expected_len = strlen((const char *)expected);
+        assert(vlen == (int64_t)expected_len);
         assert(memcmp(vstr, expected, expected_len) == 0);
     } else {
-        assert(vlen == *(int64_t *)(expected));
+        assert(vlen == *(int64_t *)expected);
     }
 
     return lpDelete(lp, p, &p);
@@ -173,8 +171,8 @@ static int lpValidation(unsigned char *p, unsigned int head_count, void *userdat
     UNUSED(head_count);
 
     int ret;
-    long *count = (long *)(userdata);
-    ret = lpCompare(p, (unsigned char *)(mixlist[*count]), strlen(mixlist[*count]));
+    long *count = (long *)userdata;
+    ret = lpCompare(p, (unsigned char *)mixlist[*count], strlen(mixlist[*count]));
     (*count)++;
     return ret;
 }
@@ -255,9 +253,9 @@ TEST_F(ListpackTest, listpackPop) {
     lp = createList();
     expected = 1024;
     lp = pop(lp, 1, &expected);
-    lp = pop(lp, 0, (char *)("hello"));
-    lp = pop(lp, 1, (char *)("quux"));
-    lp = pop(lp, 1, (char *)("foo"));
+    lp = pop(lp, 0, (void *)"hello");
+    lp = pop(lp, 1, (void *)"quux");
+    lp = pop(lp, 1, (void *)"foo");
     lpFree(lp);
 }
 
@@ -284,7 +282,7 @@ TEST_F(ListpackTest, listpackIterate0toEnd) {
     p = lpFirst(lp);
     i = 0;
     while (p) {
-        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)mixlist[i], strlen(mixlist[i]));
         p = lpNext(lp, p);
         i++;
     }
@@ -300,7 +298,7 @@ TEST_F(ListpackTest, listpackIterate1toEnd) {
     i = 1;
     p = lpSeek(lp, i);
     while (p) {
-        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)mixlist[i], strlen(mixlist[i]));
         p = lpNext(lp, p);
         i++;
     }
@@ -316,7 +314,7 @@ TEST_F(ListpackTest, listpackIterate2toEnd) {
     i = 2;
     p = lpSeek(lp, i);
     while (p) {
-        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)mixlist[i], strlen(mixlist[i]));
         p = lpNext(lp, p);
         i++;
     }
@@ -332,7 +330,7 @@ TEST_F(ListpackTest, listpackIterateBackToFront) {
     p = lpLast(lp);
     i = 3;
     while (p) {
-        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)mixlist[i], strlen(mixlist[i]));
         p = lpPrev(lp, p);
         i--;
     }
@@ -348,7 +346,7 @@ TEST_F(ListpackTest, listpackIterateBackToFrontWithDelete) {
     p = lpLast(lp);
     i = 3;
     while ((p = lpLast(lp))) {
-        verifyEntry(p, (unsigned char *)(mixlist[i]), strlen(mixlist[i]));
+        verifyEntry(p, (unsigned char *)mixlist[i], strlen(mixlist[i]));
         lp = lpDelete(lp, p, &p);
         ASSERT_EQ(p, nullptr);
         i--;
@@ -421,14 +419,14 @@ TEST_F(ListpackTest, listpackDeleteInclusiveRange0_1) {
     lp = createList();
     lp = lpDeleteRange(lp, 0, 2);
     ASSERT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
+    verifyEntry(lpFirst(lp), (unsigned char *)mixlist[2], strlen(mixlist[2]));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpFirst(lp);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 2);
     ASSERT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
+    verifyEntry(lpFirst(lp), (unsigned char *)mixlist[2], strlen(mixlist[2]));
     zfree(lp);
 }
 
@@ -439,14 +437,14 @@ TEST_F(ListpackTest, listpackDeleteInclusiveRange1_2) {
     lp = createList();
     lp = lpDeleteRange(lp, 1, 2);
     ASSERT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
+    verifyEntry(lpFirst(lp), (unsigned char *)mixlist[0], strlen(mixlist[0]));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpSeek(lp, 1);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 2);
     ASSERT_EQ(lpLength(lp), 2u);
-    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
+    verifyEntry(lpFirst(lp), (unsigned char *)mixlist[0], strlen(mixlist[0]));
     zfree(lp);
 }
 
@@ -467,14 +465,14 @@ TEST_F(ListpackTest, listpackDeleteWitNumOverflow) {
     lp = createList();
     lp = lpDeleteRange(lp, 1, 5);
     ASSERT_EQ(lpLength(lp), 1u);
-    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
+    verifyEntry(lpFirst(lp), (unsigned char *)mixlist[0], strlen(mixlist[0]));
     zfree(lp);
 
     lp = createList();
     unsigned char *ptr = lpSeek(lp, 1);
     lp = lpDeleteRangeWithEntry(lp, &ptr, 5);
     ASSERT_EQ(lpLength(lp), 1u);
-    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[0]), strlen(mixlist[0]));
+    verifyEntry(lpFirst(lp), (unsigned char *)mixlist[0], strlen(mixlist[0]));
     zfree(lp);
 }
 
@@ -486,7 +484,7 @@ TEST_F(ListpackTest, listpackBatchDelete) {
     unsigned char *ps[] = {p0, p1, p3};
     lp = lpBatchDelete(lp, ps, 3);
     ASSERT_EQ(lpLength(lp), 1u);
-    verifyEntry(lpFirst(lp), (unsigned char *)(mixlist[2]), strlen(mixlist[2]));
+    verifyEntry(lpFirst(lp), (unsigned char *)mixlist[2], strlen(mixlist[2]));
     ASSERT_EQ(lpValidateIntegrity(lp, lpBytes(lp), 1, nullptr, nullptr), 1);
     lpFree(lp);
 }
@@ -519,7 +517,7 @@ TEST_F(ListpackTest, listpackReplaceWithSameSize) {
     p = lpSeek(lp, 1);
     lp = lpReplace(lp, &p, (unsigned char *)("65536"), 5);
     p = lpSeek(lp, 0);
-    ASSERT_EQ(memcmp((char *)(p),
+    ASSERT_EQ(memcmp((char *)p,
                      "\x85zoink\x06"
                      "\xf2\x00\x00\x01\x04" /* 65536 as int24 */
                      "\x84quux\05"
@@ -539,7 +537,7 @@ TEST_F(ListpackTest, listpackReplaceWithDifferentSize) {
     p = lpSeek(lp, 1);
     lp = lpReplace(lp, &p, (unsigned char *)("squirrel"), 8);
     p = lpSeek(lp, 0);
-    ASSERT_EQ(strncmp((char *)(p),
+    ASSERT_EQ(strncmp((char *)p,
                       "\x85hello\x06"
                       "\x88squirrel\x09"
                       "\x84quux\x05"
@@ -559,16 +557,16 @@ TEST_F(ListpackTest, listpackRegressionGt255Bytes) {
     memset(v1, 'x', 256);
     memset(v2, 'y', 256);
     lp = lpNew(0);
-    lp = lpAppend(lp, (unsigned char *)(v1), strlen(v1));
-    lp = lpAppend(lp, (unsigned char *)(v2), strlen(v2));
+    lp = lpAppend(lp, (unsigned char *)v1, strlen(v1));
+    lp = lpAppend(lp, (unsigned char *)v2, strlen(v2));
 
     /* Pop values again and compare their value. */
     p = lpFirst(lp);
     vstr = lpGet(p, &vlen, nullptr);
-    ASSERT_EQ(strncmp(v1, (char *)(vstr), vlen), 0);
+    ASSERT_EQ(strncmp(v1, (char *)vstr, vlen), 0);
     p = lpSeek(lp, 1);
     vstr = lpGet(p, &vlen, nullptr);
-    ASSERT_EQ(strncmp(v2, (char *)(vstr), vlen), 0);
+    ASSERT_EQ(strncmp(v2, (char *)vstr, vlen), 0);
     lpFree(lp);
 }
 
@@ -582,7 +580,7 @@ TEST_F(ListpackTest, listpackCreateLongListAndCheckIndices) {
     int i, len;
     for (i = 0; i < 1000; i++) {
         len = snprintf(buf, sizeof(buf), "%d", i);
-        lp = lpAppend(lp, (unsigned char *)(buf), len);
+        lp = lpAppend(lp, (unsigned char *)buf, len);
     }
     for (i = 0; i < 1000; i++) {
         p = lpSeek(lp, i);
@@ -1014,9 +1012,9 @@ TEST_F(ListpackTest, DISABLED_listpackStressWithRandom) {
 
             /* Add to listpack */
             if (where == 0) {
-                lp = lpPrepend(lp, (unsigned char *)(buf), buflen);
+                lp = lpPrepend(lp, (unsigned char *)buf, buflen);
             } else {
-                lp = lpAppend(lp, (unsigned char *)(buf), buflen);
+                lp = lpAppend(lp, (unsigned char *)buf, buflen);
             }
 
             /* Add to reference list */
@@ -1089,10 +1087,10 @@ TEST_F(ListpackBenchmark, DISABLED_listpackBenchmarkLpAppend) {
     unsigned long long start = usec();
     for (int i = 0; i < iteration; i++) {
         char buf[4096] = "asdf";
-        lp = lpAppend(lp, (unsigned char *)(buf), 4);
-        lp = lpAppend(lp, (unsigned char *)(buf), 40);
-        lp = lpAppend(lp, (unsigned char *)(buf), 400);
-        lp = lpAppend(lp, (unsigned char *)(buf), 4000);
+        lp = lpAppend(lp, (unsigned char *)buf, 4);
+        lp = lpAppend(lp, (unsigned char *)buf, 40);
+        lp = lpAppend(lp, (unsigned char *)buf, 400);
+        lp = lpAppend(lp, (unsigned char *)buf, 4000);
         lp = lpAppend(lp, (unsigned char *)("1"), 1);
         lp = lpAppend(lp, (unsigned char *)("10"), 2);
         lp = lpAppend(lp, (unsigned char *)("100"), 3);
