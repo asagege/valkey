@@ -258,60 +258,60 @@ TEST_F(SdsTest, TestSds) {
     /* Test sdsResize - extend */
     x = sdsnew("1234567890123456789012345678901234567890");
     x = sdsResize(x, 200, 1);
-    /* sdsReszie() expand type */
+    /* sdsResize() expand type */
     ASSERT_EQ(x[-1], SDS_TYPE_8);
-    /* sdsReszie() expand len */
+    /* sdsResize() expand len */
     ASSERT_EQ(sdslen(x), 40u);
-    /* sdsReszie() expand strlen */
+    /* sdsResize() expand strlen */
     ASSERT_EQ(strlen(x), 40u);
     /* Different allocator allocates at least as large as requested size,
      * to confirm the allocator won't waste too much,
      * we add a largest size checker here. */
-    /* sdsReszie() expand alloc */
+    /* sdsResize() expand alloc */
     ASSERT_TRUE(sdsalloc(x) >= 200 && sdsalloc(x) < 400);
 
     /* Test sdsResize - trim free space */
     x = sdsResize(x, 80, 1);
-    /* sdsReszie() shrink type */
+    /* sdsResize() shrink type */
     ASSERT_EQ(x[-1], SDS_TYPE_8);
-    /* sdsReszie() shrink len */
+    /* sdsResize() shrink len */
     ASSERT_EQ(sdslen(x), 40u);
-    /* sdsReszie() shrink strlen */
+    /* sdsResize() shrink strlen */
     ASSERT_EQ(strlen(x), 40u);
-    /* sdsReszie() shrink alloc */
+    /* sdsResize() shrink alloc */
     ASSERT_GE(sdsalloc(x), 80u);
 
     /* Test sdsResize - crop used space */
     x = sdsResize(x, 30, 1);
-    /* sdsReszie() crop type */
+    /* sdsResize() crop type */
     ASSERT_EQ(x[-1], SDS_TYPE_8);
-    /* sdsReszie() crop len */
+    /* sdsResize() crop len */
     ASSERT_EQ(sdslen(x), 30u);
-    /* sdsReszie() crop strlen */
+    /* sdsResize() crop strlen */
     ASSERT_EQ(strlen(x), 30u);
-    /* sdsReszie() crop alloc */
+    /* sdsResize() crop alloc */
     ASSERT_GE(sdsalloc(x), 30u);
 
     /* Test sdsResize - extend to different class */
     x = sdsResize(x, 400, 1);
-    /* sdsReszie() expand type */
+    /* sdsResize() expand type */
     ASSERT_EQ(x[-1], SDS_TYPE_16);
-    /* sdsReszie() expand len */
+    /* sdsResize() expand len */
     ASSERT_EQ(sdslen(x), 30u);
-    /* sdsReszie() expand strlen */
+    /* sdsResize() expand strlen */
     ASSERT_EQ(strlen(x), 30u);
-    /* sdsReszie() expand alloc */
+    /* sdsResize() expand alloc */
     ASSERT_GE(sdsalloc(x), 400u);
 
     /* Test sdsResize - shrink to different class */
     x = sdsResize(x, 4, 1);
-    /* sdsReszie() crop type */
+    /* sdsResize() crop type */
     ASSERT_EQ(x[-1], SDS_TYPE_8);
-    /* sdsReszie() crop len */
+    /* sdsResize() crop len */
     ASSERT_EQ(sdslen(x), 4u);
-    /* sdsReszie() crop strlen */
+    /* sdsResize() crop strlen */
     ASSERT_EQ(strlen(x), 4u);
-    /* sdsReszie() crop alloc */
+    /* sdsResize() crop alloc */
     ASSERT_GE(sdsalloc(x), 4u);
     sdsfree(x);
 }

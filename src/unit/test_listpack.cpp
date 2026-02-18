@@ -231,7 +231,7 @@ TEST_F(ListpackTest, listpackLpPrependInteger) {
     lpFree(lp);
 }
 
-TEST_F(ListpackTest, listpackGetELementAtIndex) {
+TEST_F(ListpackTest, listpackGetElementAtIndex) {
     /* Get element at index */
     unsigned char *lp;
 
@@ -259,7 +259,7 @@ TEST_F(ListpackTest, listpackPop) {
     lpFree(lp);
 }
 
-TEST_F(ListpackTest, listpackGetELementAtIndex2) {
+TEST_F(ListpackTest, listpackGetElementAtIndex2) {
     /* Get element at index */
     unsigned char *lp;
 
