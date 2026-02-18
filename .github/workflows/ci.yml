@@ -219,9 +219,6 @@ jobs:
   build-macos-latest:
     runs-on: macos-latest
     steps:
-      - name: Install build dependencies
-        run: |
-          brew install llvm googletest
       - name: Install libbacktrace
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -239,7 +236,7 @@ jobs:
           export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
           export CC=/opt/homebrew/opt/llvm/bin/clang
           export CXX=/opt/homebrew/opt/llvm/bin/clang++
-          make -j3 all-with-unit-tests SERVER_CFLAGS='-Werror' USE_FAST_FLOAT=yes USE_LIBBACKTRACE=yes
+          make -j3 all-with-unit-tests SERVER_CFLAGS='-Werror' USE_FAST_FLOAT=yes USE_LIBBACKTRACE=yes LIBBACKTRACE_PREFIX=/usr/local
 
   build-32bit:
     runs-on: ubuntu-latest
