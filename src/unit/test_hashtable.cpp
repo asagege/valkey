@@ -977,10 +977,11 @@ TEST_F(HashtableTest, safe_iterator_invalidation) {
     }
 
     /* Create safe and non-safe iterators */
-    hashtableIterator safe_iter1, safe_iter2, unsafe_iter;
+    hashtableIterator safe_iter1, safe_iter2, unsafe_iter, *dyn_safe_iter;
     hashtableInitIterator(&safe_iter1, ht, HASHTABLE_ITER_SAFE);
     hashtableInitIterator(&safe_iter2, ht, HASHTABLE_ITER_SAFE);
     hashtableInitIterator(&unsafe_iter, ht, 0);
+    dyn_safe_iter = hashtableCreateIterator(ht, HASHTABLE_ITER_SAFE);
 
     /* Verify iterators work before invalidation */
     void *entry;
@@ -990,6 +991,7 @@ TEST_F(HashtableTest, safe_iterator_invalidation) {
     /* Reset iterators to test state */
     hashtableCleanupIterator(&safe_iter1);
     hashtableCleanupIterator(&safe_iter2);
+    hashtableReleaseIterator(dyn_safe_iter);
     hashtableInitIterator(&safe_iter1, ht, HASHTABLE_ITER_SAFE);
     hashtableInitIterator(&safe_iter2, ht, HASHTABLE_ITER_SAFE);
 
