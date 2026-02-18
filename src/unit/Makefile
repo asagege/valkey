@@ -151,6 +151,32 @@ ifeq ($(MALLOC),libc)
 	JEMALLOC_LIB :=
 endif
 
+LD_LIBS := $(HIREDIS_LIB) \
+	$(JEMALLOC_LIB) \
+	$(GTEST_LIBS) \
+	$(HDR_HISTOGRAM_LIB) \
+	$(FPCONV_LIB)
+
+# Add libbacktrace support if enabled
+ifeq ($(USE_LIBBACKTRACE),yes)
+    TEST_CFLAGS += -DUSE_LIBBACKTRACE
+    ifdef LIBBACKTRACE_PREFIX
+        TEST_CFLAGS += -I$(LIBBACKTRACE_PREFIX)/include
+        LDFLAGS += -L$(LIBBACKTRACE_PREFIX)/lib
+    endif
+    LD_LIBS += -lbacktrace
+endif
+
+# Add fast_float support if enabled
+ifeq ($(USE_FAST_FLOAT),yes)
+	LD_LIBS += $(FAST_FLOAT_LIB)
+endif
+
+# Add TLS libraries if enabled
+ifeq ($(BUILD_TLS),yes)
+	LD_LIBS += $(TLS_LIBS)
+endif
+
 # Compile C++ test files, recompile if generated_wrappers or compiler flags change
 %.o: %.cpp generated_wrappers.cpp .flags
 	$(CXX) -MD -MP -std=c++17 -faligned-new -Wno-write-strings -fpermissive $(GCC_FLAGS) $(OPT) $(DEBUG) $(TEST_CFLAGS) -Wall -Wno-deprecated-declarations -c \
@@ -175,22 +201,6 @@ generated_wrappers.cpp: make-prerequisites wrappers.h generate-wrappers.py
 	./generate-wrappers.py
 
 generated_wrappers.o: generated_wrappers.cpp
-
-LD_LIBS := $(HIREDIS_LIB) \
-	$(JEMALLOC_LIB) \
-	$(GTEST_LIBS) \
-	$(HDR_HISTOGRAM_LIB) \
-	$(FPCONV_LIB)
-
-# Add fast_float support if enabled
-ifeq ($(USE_FAST_FLOAT),yes)
-	LD_LIBS += $(FAST_FLOAT_LIB)
-endif
-
-# Add TLS libraries if enabled
-ifeq ($(BUILD_TLS),yes)
-	LD_LIBS += $(TLS_LIBS)
-endif
 
 # Generate the single test binary in parent directory.
 ifeq ($(uname_S), Darwin)
