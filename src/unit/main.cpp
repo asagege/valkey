@@ -37,8 +37,6 @@ char *getFlagValue(int argc, char **argv, const char *flag) {
 }
 
 int main(int argc, char **argv) {
-    test_argc = argc;
-    test_argv = argv;
     accurate = hasFlag(argc, argv, "--accurate");
     large_memory = hasFlag(argc, argv, "--large-memory");
     valgrind = hasFlag(argc, argv, "--valgrind");
@@ -81,6 +79,9 @@ int main(int argc, char **argv) {
 
     // The following line must be executed to initialize GoogleTest before running the tests.
     ::testing::InitGoogleMock(&argc, argv);
+
+    test_argc = argc;
+    test_argv = argv;
     int result = RUN_ALL_TESTS();
     if (result == 0) {
         printf("\033[32mAll UNIT TESTS PASSED!\033[0m\n");

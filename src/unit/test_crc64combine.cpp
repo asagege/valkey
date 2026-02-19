@@ -86,7 +86,7 @@ static void genBenchmarkRandomData(char *data, int count) {
 
 /* This is a special unit test useful for benchmarking crc64combine performance. The
  * benchmarking is only done when the tests are invoked with specific arguments,
- * like './valkey-unit-gtests --gtest_filter=*Crc64Combine* --gtest_also_run_disabled_tests -- --crc 16384'. */
+ * like './src/unit/valkey-unit-gtests --gtest_filter='*Crc64Combine*' --gtest_also_run_disabled_tests -- --crc 16384'. */
 int test_crc64combine_impl(int argc, char **argv) {
     uint64_t crc64_test_size = 0;
     int i, lastarg, csv = 0, loop = 0, combine = 0;
@@ -116,7 +116,7 @@ again:
         invalid:
             printf("Invalid option \"%s\" or option argument missing\n\n", argv[i]);
         usage:
-            printf("Usage: valkey-unit-gtests --gtest_filter=*Crc64Combine* --gtest_also_run_disabled_tests -- [OPTIONS]\n\n"
+            printf("Usage: ./src/unit/valkey-unit-gtests --gtest_filter='*Crc64Combine*' --gtest_also_run_disabled_tests -- --[OPTIONS]\n\n"
                    " --csv              Output in CSV format\n"
                    " -l                 Loop. Run the tests forever\n"
                    " --crc <bytes>      Benchmark crc64 faster options, using a buffer this big, and quit when done.\n"
@@ -235,7 +235,7 @@ class Crc64CombineBenchmark : public ::testing::Test {
 };
 
 /* Benchmark test for CRC64 - disabled by default.
- * Run with: ./valkey-unit-gtests --gtest_filter=*Crc64Combine* --gtest_also_run_disabled_tests -- --crc 16384 */
+ * Run with: ./src/unit/valkey-unit-gtests --gtest_filter='*Crc64Combine*' --gtest_also_run_disabled_tests -- --crc 16384 */
 TEST_F(Crc64CombineBenchmark, DISABLED_Benchmark) {
     ASSERT_EQ(test_crc64combine_impl(test_argc, test_argv), 0);
 }
