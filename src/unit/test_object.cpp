@@ -16,6 +16,10 @@ extern "C" {
 }
 
 class ObjectTest : public ::testing::Test {
+  protected:
+    void TearDown() override {
+        objectResetMetadataSize();
+    }
 };
 
 TEST_F(ObjectTest, object_with_key) {
@@ -162,6 +166,172 @@ TEST_F(ObjectTest, unembed_value) {
     ASSERT_EQ(sdscmp(objectGetKey(obj), key), 0);
     ASSERT_EQ(objectGetExpire(obj), expire);
     ASSERT_NE(objectGetVal(obj), short_value); /* different allocation, different copy */
+
+    sdsfree(key);
+    decrRefCount(obj);
+}
+
+/* Metadata test helpers */
+typedef struct objMetadata {
+    uint32_t meta_int;
+} objMetadata;
+
+static void objectSetMetaInt(robj *o, uint32_t metadata_int) {
+    objMetadata *meta = (objMetadata *)objectGetMetadata(o);
+    meta->meta_int = metadata_int;
+}
+
+static uint32_t objectGetMetaInt(const robj *o) {
+    objMetadata *meta = (objMetadata *)objectGetMetadata(o);
+    return meta->meta_int;
+}
+
+TEST_F(ObjectTest, metadata_disabled) {
+    sds key = sdsnew("testkey");
+    robj *obj = createStringObject("value", 5);
+    robj *obj_with_key = objectSetKeyAndExpire(obj, key, -1);
+
+    ASSERT_EQ(objectGetMetadata(obj_with_key), nullptr);
+    ASSERT_EQ(objectGetMetadataSize(obj_with_key), 0u);
+
+    sdsfree(key);
+    decrRefCount(obj_with_key);
+}
+
+TEST_F(ObjectTest, metadata_without_key) {
+    objectSetMetadataSize(sizeof(objMetadata));
+
+    robj *obj_no_key = createStringObject("value_without_key", 17);
+
+    ASSERT_EQ(objectGetMetadata(obj_no_key), nullptr);
+    ASSERT_EQ(objectGetMetadataSize(obj_no_key), 0u);
+
+    decrRefCount(obj_no_key);
+}
+
+TEST_F(ObjectTest, metadata_with_key) {
+    objectSetMetadataSize(sizeof(objMetadata));
+
+    sds key = sdsnew("testkey");
+    robj *obj = createStringObject("value", 5);
+    robj *obj_with_key = objectSetKeyAndExpire(obj, key, -1);
+
+    ASSERT_EQ(objectGetMetadataSize(obj_with_key), sizeof(objMetadata));
+
+    void *meta_ptr = objectGetMetadata(obj_with_key);
+    ASSERT_NE(meta_ptr, nullptr);
+
+    objMetadata *meta = (objMetadata *)meta_ptr;
+    EXPECT_EQ(meta->meta_int, 0u);
+
+    sdsfree(key);
+    decrRefCount(obj_with_key);
+}
+
+TEST_F(ObjectTest, metadata_read_write) {
+    objectSetMetadataSize(sizeof(objMetadata));
+
+    sds key = sdsnew("mykey");
+    robj *obj = createStringObject("myvalue", 7);
+    robj *obj_with_key = objectSetKeyAndExpire(obj, key, -1);
+
+    ASSERT_EQ(objectGetMetadataSize(obj_with_key), sizeof(objMetadata));
+
+    objectSetMetaInt(obj_with_key, 12345);
+    EXPECT_EQ(objectGetMetaInt(obj_with_key), 12345u);
+
+    objectSetMetaInt(obj_with_key, 67890);
+    EXPECT_EQ(objectGetMetaInt(obj_with_key), 67890u);
+
+    sdsfree(key);
+    decrRefCount(obj_with_key);
+}
+
+TEST_F(ObjectTest, metadata_multiple_objects) {
+    objectSetMetadataSize(sizeof(objMetadata));
+
+    sds key1 = sdsnew("key1");
+    sds key2 = sdsnew("key2");
+    sds key3 = sdsnew("key3");
+
+    robj *obj1 = createStringObject("val1", 4);
+    robj *obj2 = createStringObject("val2", 4);
+    robj *obj3 = createStringObject("val3", 4);
+
+    robj *obj_with_key1 = objectSetKeyAndExpire(obj1, key1, -1);
+    robj *obj_with_key2 = objectSetKeyAndExpire(obj2, key2, -1);
+    robj *obj_with_key3 = objectSetKeyAndExpire(obj3, key3, -1);
+
+    ASSERT_EQ(objectGetMetadataSize(obj_with_key1), sizeof(objMetadata));
+    ASSERT_EQ(objectGetMetadataSize(obj_with_key2), sizeof(objMetadata));
+    ASSERT_EQ(objectGetMetadataSize(obj_with_key3), sizeof(objMetadata));
+
+    objectSetMetaInt(obj_with_key1, 100);
+    objectSetMetaInt(obj_with_key2, 200);
+    objectSetMetaInt(obj_with_key3, 300);
+
+    EXPECT_EQ(objectGetMetaInt(obj_with_key1), 100u);
+    EXPECT_EQ(objectGetMetaInt(obj_with_key2), 200u);
+    EXPECT_EQ(objectGetMetaInt(obj_with_key3), 300u);
+
+    objectSetMetaInt(obj_with_key2, 999);
+    EXPECT_EQ(objectGetMetaInt(obj_with_key1), 100u);
+    EXPECT_EQ(objectGetMetaInt(obj_with_key2), 999u);
+    EXPECT_EQ(objectGetMetaInt(obj_with_key3), 300u);
+
+    sdsfree(key1);
+    sdsfree(key2);
+    sdsfree(key3);
+    decrRefCount(obj_with_key1);
+    decrRefCount(obj_with_key2);
+    decrRefCount(obj_with_key3);
+}
+
+TEST_F(ObjectTest, metadata_causes_embed_threshold_exceeded) {
+    /* Without metadata: key_len=32, val_len=15, no expire
+     * size = 8 (robj-ptr) + 37 (key SDS + prefix) + 0 (metadata) + 19 (val SDS) = 64 → EMBSTR
+     * With metadata (4 bytes): size = 64 + 4 = 68 → RAW */
+    objectSetMetadataSize(sizeof(objMetadata));
+
+    sds key = sdsnew("k:123456789012345678901234567890");
+    ASSERT_EQ(sdslen(key), 32u);
+
+    const char *value = "123456789012345";
+    ASSERT_EQ(strlen(value), 15u);
+
+    robj *val_obj = createStringObject(value, strlen(value));
+    robj *obj = objectSetKeyAndExpire(val_obj, key, -1);
+
+    /* With metadata enabled, this should exceed 64 bytes and use RAW encoding */
+    ASSERT_EQ(obj->encoding, (unsigned)OBJ_ENCODING_RAW);
+    ASSERT_EQ(sdslen(objectGetKey(obj)), 32u);
+    ASSERT_EQ(sdscmp(objectGetKey(obj), key), 0);
+    ASSERT_EQ(sdslen((sds)objectGetVal(obj)), 15u);
+    ASSERT_EQ(strcmp((const char *)objectGetVal(obj), value), 0);
+
+    sdsfree(key);
+    decrRefCount(obj);
+}
+
+TEST_F(ObjectTest, metadata_exact_fit_at_64_bytes) {
+    /* key_len=32, val_len=11, no expire, metadata=4
+     * size = 8 + 37 + 4 + 15 = 64 → EMBSTR */
+    objectSetMetadataSize(sizeof(objMetadata));
+
+    sds key = sdsnew("k:123456789012345678901234567890");
+    ASSERT_EQ(sdslen(key), 32u);
+
+    const char *value = "12345678901";
+    ASSERT_EQ(strlen(value), 11u);
+
+    robj *val_obj = createStringObject(value, strlen(value));
+    robj *obj = objectSetKeyAndExpire(val_obj, key, -1);
+
+    ASSERT_EQ(obj->encoding, (unsigned)OBJ_ENCODING_EMBSTR);
+    ASSERT_EQ(sdslen(objectGetKey(obj)), 32u);
+    ASSERT_EQ(sdscmp(objectGetKey(obj), key), 0);
+    ASSERT_EQ(sdslen((sds)objectGetVal(obj)), 11u);
+    ASSERT_EQ(strcmp((const char *)objectGetVal(obj), value), 0);
 
     sdsfree(key);
     decrRefCount(obj);
